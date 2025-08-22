@@ -1,0 +1,79 @@
+<div class="col-lg-3 col-md-4 mb-4">
+    <div class="sticky-sidebar">
+        <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <!-- User Profile Header -->
+            <div class="p-3 border-bottom bg-light">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-circle bg-primary text-white me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px; border-radius: 50%;">
+                        <i class="bi bi-person-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <h6 class="mb-0">{{ user.name }}</h6>
+                        <small class="text-muted">{{ user.email }}</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Navigation Menu -->
+            <nav class="nav flex-column">
+                <a class="nav-link px-3 py-3 border-bottom {% if request.resolver_match.url_name == 'dashboard' %}active bg-primary text-white{% else %}text-dark{% endif %}" href="{% url 'accounts:dashboard' %}">
+                    <i class="bi bi-speedometer2 me-2"></i>
+                    Dashboard
+                </a>
+                <a class="nav-link px-3 py-3 border-bottom {% if request.resolver_match.url_name == 'profile' %}active bg-primary text-white{% else %}text-dark{% endif %}" href="{% url 'accounts:profile' %}">
+                    <i class="bi bi-person-gear me-2"></i>
+                    Profile Settings
+                </a>
+                <a class="nav-link px-3 py-3 border-bottom {% if request.resolver_match.url_name == 'orders' %}active bg-primary text-white{% else %}text-dark{% endif %}" href="#">
+                    <i class="bi bi-bag-check me-2"></i>
+                    My Orders
+                </a>
+                <a class="nav-link px-3 py-3 border-bottom {% if request.resolver_match.url_name == 'designs' %}active bg-primary text-white{% else %}text-dark{% endif %}" href="#">
+                    <i class="bi bi-palette me-2"></i>
+                    My Designs
+                </a>
+            </nav>
+        </div>
+    </div>
+    </div>
+</div>
+
+<style>
+.sticky-sidebar {
+    position: sticky;
+    top: 100px; /* Adjust this value based on your navbar height */
+    height: fit-content;
+    max-height: calc(100vh - 120px); /* Subtract navbar height + some padding */
+    overflow-y: auto;
+}
+
+.nav-link.active {
+    position: relative;
+}
+.nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background-color: var(--brand-primary);
+}
+.nav-link:hover:not(.active) {
+    background-color: #f8f9fa;
+}
+.avatar-circle {
+    flex-shrink: 0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 991.98px) {
+    .sticky-sidebar {
+        position: static;
+        height: auto;
+        max-height: none;
+        overflow-y: visible;
+    }
+}
+</style>

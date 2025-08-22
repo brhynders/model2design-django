@@ -1,0 +1,84 @@
+{% load static %}
+
+{% if cart_items %}
+    <!-- Real Cart Items -->
+    <div class="cart-items">
+        {% for item in cart_items %}
+        <div class="card mb-3">
+            <div class="card-body p-3">
+                <div class="d-flex">
+                    {% if item.thumbnail %}
+                    <div class="flex-shrink-0 me-3">
+                        <img src="{{ item.thumbnail }}" 
+                             alt="{{ item.product_name }}" 
+                             class="rounded" 
+                             style="width: 50px; height: 50px; object-fit: cover;">
+                    </div>
+                    {% endif %}
+                    
+                    <div class="flex-grow-1">
+                        <h6 class="card-title mb-1">
+                            {% if item.design_name %}
+                                {{ item.design_name }}
+                            {% else %}
+                                {{ item.product_name }}
+                            {% endif %}
+                        </h6>
+                        
+                        {% if item.design_name %}
+                        <p class="text-muted small mb-1">
+                            {{ item.product_name }}
+                        </p>
+                        {% endif %}
+                        
+                        <p class="card-text mb-1">
+                            <small class="text-muted">
+                                {{ item.sizes_display }}
+                            </small>
+                        </p>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">
+                                ${{ item.price|floatformat:2 }} each
+                            </small>
+                            <strong class="text-primary">
+                                ${{ item.total|floatformat:2 }}
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <hr>
+    
+    <div class="d-flex justify-content-between mb-2">
+        <span>Subtotal:</span>
+        <span>${{ cart_total|floatformat:2 }}</span>
+    </div>
+    
+    <div class="d-flex justify-content-between mb-3">
+        <span>Shipping:</span>
+        <span>${{ shipping|floatformat:2 }}</span>
+    </div>
+    
+    <div class="d-flex justify-content-between mb-3 border-top pt-2">
+        <strong>Total:</strong>
+        <strong class="text-primary">${{ grand_total|floatformat:2 }}</strong>
+    </div>
+    
+    <div class="d-grid gap-2">
+        <a href="{% url 'cart:view' %}" class="btn btn-outline-primary">View Cart</a>
+        <a href="#" class="btn btn-primary">Checkout</a>
+    </div>
+{% else %}
+    <div class="text-center py-4">
+        <i class="bi bi-cart3 text-muted" style="font-size: 3rem;"></i>
+        <p class="text-muted mt-3 mb-3">Your cart is empty</p>
+        <div class="d-grid">
+            <a href="{% url 'products:list' %}" class="btn btn-primary">Start Designing</a>
+        </div>
+    </div>
+{% endif %}

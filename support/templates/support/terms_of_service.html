@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Terms of Service - {{ current_brand.name }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <div class="text-center mb-5">
+                <h1 class="display-4 fw-bold mb-3">Terms of Service</h1>
+                <p class="text-muted">Last updated: {{ "now"|date:"F d, Y" }}</p>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3>Acceptance of Terms</h3>
+                    <p>By accessing and using our services, you accept and agree to be bound by the terms and provision of this agreement.</p>
+                    
+                    <h3>Use License</h3>
+                    <p>Permission is granted to temporarily use our services for personal, non-commercial transitory viewing only.</p>
+                    
+                    <h3>Account Terms</h3>
+                    <p>You are responsible for maintaining the security of your account and password. You must not use our service for any illegal or unauthorized purpose.</p>
+                    
+                    <h3>Product Terms</h3>
+                    <p>Products are subject to availability. We reserve the right to limit quantities and discontinue products at any time.</p>
+                    
+                    <h3>Payment Terms</h3>
+                    <p>All payments are processed securely. You agree to provide current, complete, and accurate purchase information.</p>
+                    
+                    <h3>Limitation of Liability</h3>
+                    <p>In no case shall our company be liable for any incidental or consequential damages arising out of or relating to this agreement.</p>
+                    
+                    <h3>Contact Information</h3>
+                    <p>Questions about the Terms of Service should be sent to us through our <a href="{% url 'support:support' %}">Support Center</a>.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

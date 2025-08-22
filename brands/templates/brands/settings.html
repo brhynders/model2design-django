@@ -1,0 +1,278 @@
+{% extends "brands/base_brand.html" %}
+{% load static %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">Brand Settings</h1>
+    <p class="page-description">Configure your brand's information and preferences</p>
+</div>
+
+<!-- Brand Information -->
+<div class="dashboard-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Brand Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="brandInfoForm">
+                        {% csrf_token %}
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="brandName" class="form-label">Brand Name</label>
+                                    <input type="text" class="form-control" id="brandName" name="name" 
+                                           value="{{ current_brand.name }}" required>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="brandSlug" class="form-label">Slug</label>
+                                    <input type="text" class="form-control" id="brandSlug" name="slug" 
+                                           value="{{ current_brand.slug }}" readonly>
+                                    <div class="form-text">Used in URLs and internal references</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="brandSubdomain" class="form-label">Subdomain</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="brandSubdomain" name="subdomain" 
+                                               value="{{ current_brand.subdomain|default:'' }}" 
+                                               placeholder="mybrand">
+                                        <span class="input-group-text">.example.com</span>
+                                    </div>
+                                    <div class="form-text">Leave empty for main domain access</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="contactEmail" class="form-label">Contact Email</label>
+                                    <input type="email" class="form-control" id="contactEmail" name="contact_email" 
+                                           value="{{ current_brand.contact_email|default:'' }}">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="websiteUrl" class="form-label">Website URL</label>
+                                    <input type="url" class="form-control" id="websiteUrl" name="website_url" 
+                                           value="{{ current_brand.website_url|default:'' }}" 
+                                           placeholder="https://example.com">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="logoUrl" class="form-label">Logo URL</label>
+                                    <input type="url" class="form-control" id="logoUrl" name="logo_url" 
+                                           value="{{ current_brand.logo_url|default:'' }}" 
+                                           placeholder="https://example.com/logo.png">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="brandDescription" class="form-label">Description</label>
+                            <textarea class="form-control" id="brandDescription" name="description" rows="3" 
+                                      placeholder="Describe your brand...">{{ current_brand.description|default:'' }}</textarea>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+<!-- Brand Customization -->
+<div class="dashboard-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-palette me-2"></i>
+                        Brand Customization
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="primaryColor" class="form-label">Primary Color</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="primaryColor" 
+                                           name="primary_color" value="{{ current_brand.primary_color }}" 
+                                           title="Choose primary color">
+                                    <input type="text" class="form-control" value="{{ current_brand.primary_color }}" 
+                                           readonly>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="secondaryColor" class="form-label">Secondary Color</label>
+                                <div class="input-group">
+                                    <input type="color" class="form-control form-control-color" id="secondaryColor" 
+                                           name="secondary_color" value="{{ current_brand.secondary_color }}" 
+                                           title="Choose secondary color">
+                                    <input type="text" class="form-control" value="{{ current_brand.secondary_color }}" 
+                                           readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Color Preview -->
+                    <div class="alert alert-info">
+                        <strong>Preview:</strong> 
+                        <span class="badge me-2" style="background-color: {{ current_brand.primary_color }}; color: white;">
+                            Primary Color
+                        </span>
+                        <span class="badge" style="background-color: {{ current_brand.secondary_color }}; color: white;">
+                            Secondary Color
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+<!-- Brand Status -->
+<div class="dashboard-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-toggle-on me-2"></i>
+                        Brand Status
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="isActive" name="is_active" 
+                                       {% if current_brand.is_active %}checked{% endif %}>
+                                <label class="form-check-label" for="isActive">
+                                    <strong>Active Brand</strong>
+                                </label>
+                            </div>
+                            <small class="text-muted">
+                                Inactive brands are not accessible to customers
+                            </small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {% if current_brand.is_default %}
+                            <div class="alert alert-primary py-2 mb-0">
+                                <i class="bi bi-star-fill me-2"></i>
+                                This is the default brand for the main domain
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+<!-- Ownership & Permissions -->
+{% if brand_owner %}
+<div class="dashboard-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-people me-2"></i>
+                        Ownership & Access
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2">
+                                <strong>Your Role:</strong>
+                                {% if brand_owner.is_primary %}
+                                <span class="badge bg-primary">Primary Owner</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Brand Owner</span>
+                                {% endif %}
+                            </p>
+                            <p class="mb-0">
+                                <strong>Access Since:</strong>
+                                {{ brand_owner.created_at|date:"M j, Y" }}
+                            </p>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {% if brand_owner.is_primary %}
+                            <button type="button" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-person-plus me-2"></i>
+                                Manage Owners
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+<!-- Statistics -->
+<div class="dashboard-card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="bi bi-graph-up me-2"></i>
+                        Brand Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="border-end">
+                                <h4 class="text-primary">{{ current_brand.brandproduct_set.count }}</h4>
+                                <small class="text-muted">Products</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border-end">
+                                <h4 class="text-success">{{ current_brand.templates.count }}</h4>
+                                <small class="text-muted">Templates</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="border-end">
+                                <h4 class="text-info">{{ current_brand.images.count }}</h4>
+                                <small class="text-muted">Images</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <h4 class="text-warning">{{ current_brand.earnings.count }}</h4>
+                            <small class="text-muted">Earnings</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="d-flex justify-content-end">
+                <button type="button" class="btn btn-secondary me-2">Cancel</button>
+                <button type="submit" form="brandInfoForm" class="btn btn-primary">
+                    <i class="bi bi-check-lg me-2"></i>
+                    Save Changes
+                </button>
+            </div>
+
+<script>
+// Color picker synchronization
+document.addEventListener('DOMContentLoaded', function() {
+    const primaryColorPicker = document.getElementById('primaryColor');
+    const secondaryColorPicker = document.getElementById('secondaryColor');
+    
+    primaryColorPicker.addEventListener('input', function() {
+        this.nextElementSibling.value = this.value;
+        updateColorPreview();
+    });
+    
+    secondaryColorPicker.addEventListener('input', function() {
+        this.nextElementSibling.value = this.value;
+        updateColorPreview();
+    });
+    
+    function updateColorPreview() {
+        const primaryColor = primaryColorPicker.value;
+        const secondaryColor = secondaryColorPicker.value;
+        
+        const primaryBadge = document.querySelector('.alert-info .badge:first-of-type');
+        const secondaryBadge = document.querySelector('.alert-info .badge:last-of-type');
+        
+        primaryBadge.style.backgroundColor = primaryColor;
+        secondaryBadge.style.backgroundColor = secondaryColor;
+    }
+});
+</script>
+{% endblock %}

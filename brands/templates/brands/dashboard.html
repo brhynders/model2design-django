@@ -1,0 +1,415 @@
+{% extends "brands/base_brand.html" %}
+{% load static %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">Dashboard Overview</h1>
+    <p class="page-description">Welcome back! Here's what's happening with your brand today.</p>
+    
+    <div class="page-actions">
+        <button class="btn btn-outline-primary">
+            <i class="bi bi-download me-2"></i> Export Report
+        </button>
+        <button class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i> New Template
+        </button>
+    </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card animate-in">
+        <div class="stat-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary-color);">
+            <i class="bi bi-box-seam"></i>
+        </div>
+        <div class="stat-value">{{ total_products }}</div>
+        <div class="stat-label">Active Products</div>
+        <div class="stat-change positive">
+            <i class="bi bi-arrow-up"></i> 12%
+        </div>
+    </div>
+    
+    <div class="stat-card animate-in" style="animation-delay: 0.1s;">
+        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+            <i class="bi bi-palette"></i>
+        </div>
+        <div class="stat-value">{{ total_templates }}</div>
+        <div class="stat-label">Design Templates</div>
+        <div class="stat-change positive">
+            <i class="bi bi-arrow-up"></i> 8%
+        </div>
+    </div>
+    
+    <div class="stat-card animate-in" style="animation-delay: 0.2s;">
+        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+            <i class="bi bi-images"></i>
+        </div>
+        <div class="stat-value">{{ total_images }}</div>
+        <div class="stat-label">Brand Images</div>
+        <div class="stat-change positive">
+            <i class="bi bi-arrow-up"></i> 24%
+        </div>
+    </div>
+    
+    <div class="stat-card animate-in" style="animation-delay: 0.3s;">
+        <div class="stat-icon" style="background: rgba(251, 146, 60, 0.1); color: #fb923c;">
+            <i class="bi bi-currency-dollar"></i>
+        </div>
+        <div class="stat-value">${{ recent_earnings.total|default:0|floatformat:0 }}</div>
+        <div class="stat-label">30-Day Revenue</div>
+        {% if recent_earnings.count %}
+        <div class="stat-change positive">
+            <i class="bi bi-arrow-up"></i> {{ recent_earnings.count }} orders
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="row">
+    <!-- Revenue Chart -->
+    <div class="col-lg-8 mb-4">
+        <div class="dashboard-card animate-in" style="animation-delay: 0.4s;">
+            <div class="card-header-custom">
+                <h3 class="card-title-custom">
+                    <i class="bi bi-graph-up text-primary"></i>
+                    Revenue Overview
+                </h3>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                        Last 30 Days
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">Last 7 Days</a></li>
+                        <li><a class="dropdown-item" href="#">Last 30 Days</a></li>
+                        <li><a class="dropdown-item" href="#">Last 90 Days</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="col-lg-4 mb-4">
+        <div class="dashboard-card animate-in" style="animation-delay: 0.5s;">
+            <div class="card-header-custom">
+                <h3 class="card-title-custom">
+                    <i class="bi bi-lightning-charge text-warning"></i>
+                    Quick Actions
+                </h3>
+            </div>
+            
+            <div class="quick-actions">
+                <a href="{% url 'brands:templates' %}" class="quick-action-btn">
+                    <i class="bi bi-file-earmark-plus text-primary"></i>
+                    <span>Create Template</span>
+                </a>
+                
+                <a href="{% url 'brands:images' %}" class="quick-action-btn">
+                    <i class="bi bi-cloud-upload text-success"></i>
+                    <span>Upload Images</span>
+                </a>
+                
+                <a href="{% url 'brands:settings' %}" class="quick-action-btn">
+                    <i class="bi bi-gear text-info"></i>
+                    <span>Brand Settings</span>
+                </a>
+                
+                <a href="{% url 'brands:earnings' %}" class="quick-action-btn">
+                    <i class="bi bi-bar-chart text-warning"></i>
+                    <span>View Analytics</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Templates -->
+    <div class="col-lg-6 mb-4">
+        <div class="dashboard-card animate-in" style="animation-delay: 0.6s;">
+            <div class="card-header-custom">
+                <h3 class="card-title-custom">
+                    <i class="bi bi-clock-history text-info"></i>
+                    Recent Templates
+                </h3>
+                <a href="{% url 'brands:templates' %}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            
+            {% if recent_templates %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Template</th>
+                        <th>Usage</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for template in recent_templates %}
+                    <tr>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-file-earmark-text text-primary"></i>
+                                </div>
+                                <div>
+                                    <div class="fw-semibold">{{ template.name|truncatechars:30 }}</div>
+                                    <small class="text-muted">{{ template.created_at|date:"M j" }}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark">{{ template.usage_count }} uses</span>
+                        </td>
+                        <td>
+                            {% if template.is_public %}
+                            <span class="badge bg-success-subtle text-success">Public</span>
+                            {% else %}
+                            <span class="badge bg-secondary-subtle text-secondary">Private</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-file-earmark-plus display-4 text-muted mb-3"></i>
+                <p class="text-muted">No templates created yet</p>
+                <a href="{% url 'brands:templates' %}" class="btn btn-primary btn-sm">
+                    Create Your First Template
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Activity Feed -->
+    <div class="col-lg-6 mb-4">
+        <div class="dashboard-card animate-in" style="animation-delay: 0.7s;">
+            <div class="card-header-custom">
+                <h3 class="card-title-custom">
+                    <i class="bi bi-activity text-success"></i>
+                    Recent Activity
+                </h3>
+                <button class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+            
+            <div class="activity-feed">
+                <div class="activity-item d-flex gap-3 mb-3">
+                    <div class="activity-icon" style="width: 40px; height: 40px; background: rgba(16, 185, 129, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-check-circle text-success"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">New order completed</div>
+                        <small class="text-muted">Order #1019 has been successfully processed</small>
+                        <div class="text-muted small mt-1">2 hours ago</div>
+                    </div>
+                </div>
+                
+                <div class="activity-item d-flex gap-3 mb-3">
+                    <div class="activity-icon" style="width: 40px; height: 40px; background: rgba(79, 70, 229, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-palette text-primary"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Template updated</div>
+                        <small class="text-muted">Summer Collection template has been modified</small>
+                        <div class="text-muted small mt-1">5 hours ago</div>
+                    </div>
+                </div>
+                
+                <div class="activity-item d-flex gap-3 mb-3">
+                    <div class="activity-icon" style="width: 40px; height: 40px; background: rgba(59, 130, 246, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-images" style="color: #3b82f6;"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">New images uploaded</div>
+                        <small class="text-muted">4 new brand images added to the library</small>
+                        <div class="text-muted small mt-1">Yesterday</div>
+                    </div>
+                </div>
+                
+                <div class="activity-item d-flex gap-3">
+                    <div class="activity-icon" style="width: 40px; height: 40px; background: rgba(251, 146, 60, 0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-currency-dollar" style="color: #fb923c;"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="fw-semibold">Payment received</div>
+                        <small class="text-muted">Commission payment of $245.50 processed</small>
+                        <div class="text-muted small mt-1">2 days ago</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Metrics -->
+<div class="dashboard-card animate-in" style="animation-delay: 0.8s;">
+    <div class="card-header-custom">
+        <h3 class="card-title-custom">
+            <i class="bi bi-speedometer2 text-danger"></i>
+            Performance Metrics
+        </h3>
+        <button class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-download me-1"></i> Export
+        </button>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-3 text-center">
+            <div class="mb-3">
+                <canvas id="conversionChart" style="max-width: 150px; margin: 0 auto;"></canvas>
+            </div>
+            <h5 class="mb-1">68%</h5>
+            <small class="text-muted">Conversion Rate</small>
+        </div>
+        
+        <div class="col-md-3 text-center">
+            <div class="mb-3">
+                <canvas id="satisfactionChart" style="max-width: 150px; margin: 0 auto;"></canvas>
+            </div>
+            <h5 class="mb-1">92%</h5>
+            <small class="text-muted">Customer Satisfaction</small>
+        </div>
+        
+        <div class="col-md-3 text-center">
+            <div class="mb-3">
+                <canvas id="growthChart" style="max-width: 150px; margin: 0 auto;"></canvas>
+            </div>
+            <h5 class="mb-1">+24%</h5>
+            <small class="text-muted">Growth Rate</small>
+        </div>
+        
+        <div class="col-md-3 text-center">
+            <div class="mb-3">
+                <canvas id="engagementChart" style="max-width: 150px; margin: 0 auto;"></canvas>
+            </div>
+            <h5 class="mb-1">85%</h5>
+            <small class="text-muted">Engagement Score</small>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Revenue Chart
+const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+new Chart(revenueCtx, {
+    type: 'line',
+    data: {
+        labels: ['Day 1', 'Day 5', 'Day 10', 'Day 15', 'Day 20', 'Day 25', 'Day 30'],
+        datasets: [{
+            label: 'Revenue',
+            data: [1200, 1900, 3000, 2500, 3200, 4100, 3800],
+            borderColor: 'rgb(79, 70, 229)',
+            backgroundColor: 'rgba(79, 70, 229, 0.1)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return '$' + value;
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Small Donut Charts
+const chartOptions = {
+    type: 'doughnut',
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        cutout: '70%'
+    }
+};
+
+// Conversion Chart
+new Chart(document.getElementById('conversionChart'), {
+    ...chartOptions,
+    data: {
+        datasets: [{
+            data: [68, 32],
+            backgroundColor: ['#4f46e5', '#e5e7eb']
+        }]
+    }
+});
+
+// Satisfaction Chart
+new Chart(document.getElementById('satisfactionChart'), {
+    ...chartOptions,
+    data: {
+        datasets: [{
+            data: [92, 8],
+            backgroundColor: ['#10b981', '#e5e7eb']
+        }]
+    }
+});
+
+// Growth Chart
+new Chart(document.getElementById('growthChart'), {
+    ...chartOptions,
+    data: {
+        datasets: [{
+            data: [24, 76],
+            backgroundColor: ['#3b82f6', '#e5e7eb']
+        }]
+    }
+});
+
+// Engagement Chart
+new Chart(document.getElementById('engagementChart'), {
+    ...chartOptions,
+    data: {
+        datasets: [{
+            data: [85, 15],
+            backgroundColor: ['#fb923c', '#e5e7eb']
+        }]
+    }
+});
+</script>
+{% endblock %}

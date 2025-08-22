@@ -1,0 +1,364 @@
+{% extends "brands/base_brand.html" %}
+{% load static %}
+
+{% block title %}Images{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">Image Library</h1>
+    <p class="page-description">Manage your brand's images, logos, and visual assets</p>
+    
+    <div class="page-actions">
+        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bulkUploadModal">
+            <i class="bi bi-cloud-upload me-2"></i> Bulk Upload
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+            <i class="bi bi-plus-lg me-2"></i> Upload Images
+        </button>
+    </div>
+</div>
+
+<!-- Stats Bar -->
+<div class="stats-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary-color);">
+            <i class="bi bi-images"></i>
+        </div>
+        <div class="stat-value">{{ images.count|default:0 }}</div>
+        <div class="stat-label">Total Images</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+            <i class="bi bi-folder"></i>
+        </div>
+        <div class="stat-value">{{ categories.count|default:0 }}</div>
+        <div class="stat-label">Categories</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+            <i class="bi bi-hdd"></i>
+        </div>
+        <div class="stat-value">2.4 GB</div>
+        <div class="stat-label">Storage Used</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(251, 146, 60, 0.1); color: #fb923c;">
+            <i class="bi bi-globe"></i>
+        </div>
+        <div class="stat-value">{{ images.filter.is_public.count|default:0 }}</div>
+        <div class="stat-label">Public Images</div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="dashboard-card mb-4">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search images..." id="searchImages">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" id="filterCategory">
+                <option value="">All Categories</option>
+                {% for category in categories %}
+                <option value="{{ category.slug }}" {% if selected_category == category.slug %}selected{% endif %}>
+                    {{ category.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" id="filterType">
+                <option value="">All Types</option>
+                <option value="logo">Logos</option>
+                <option value="background">Backgrounds</option>
+                <option value="texture">Textures</option>
+                <option value="icon">Icons</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <div class="btn-group w-100" role="group">
+                <button type="button" class="btn btn-outline-secondary active" id="gridView">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="listView">
+                    <i class="bi bi-list-ul"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Images Grid -->
+{% if images %}
+<div class="row" id="imagesGrid">
+    {% for image in images %}
+    <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6 mb-4 animate-in" style="animation-delay: {{ forloop.counter0|add:1 }}0ms;">
+        <div class="dashboard-card h-100" style="padding: 0; overflow: hidden; cursor: pointer;" 
+             onclick="viewImage('{{ image.image_url }}', '{{ image.name }}')">
+            <!-- Image Preview -->
+            <div class="position-relative" style="height: 150px; background: #f8fafc;">
+                {% if image.thumbnail_url %}
+                <img src="{{ image.thumbnail_url }}" alt="{{ image.name }}" 
+                     style="width: 100%; height: 100%; object-fit: cover;">
+                {% elif image.image_url %}
+                <img src="{{ image.image_url }}" alt="{{ image.name }}" 
+                     style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                <div class="d-flex align-items-center justify-content-center h-100">
+                    <i class="bi bi-image text-muted" style="font-size: 2rem;"></i>
+                </div>
+                {% endif %}
+                
+                <!-- Selection Checkbox -->
+                <div class="position-absolute top-0 start-0 p-2">
+                    <input type="checkbox" class="form-check-input image-select" value="{{ image.id }}"
+                           onclick="event.stopPropagation();">
+                </div>
+                
+                <!-- Public Badge -->
+                {% if image.is_public %}
+                <div class="position-absolute top-0 end-0 p-2">
+                    <span class="badge bg-success">
+                        <i class="bi bi-globe"></i>
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+            
+            <!-- Image Info -->
+            <div class="p-2">
+                <h6 class="mb-1 small text-truncate">{{ image.name }}</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        {% if image.width and image.height %}
+                        {{ image.width }}×{{ image.height }}
+                        {% endif %}
+                    </small>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-link text-muted p-0" data-bs-toggle="dropdown" 
+                                onclick="event.stopPropagation();">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); viewImage('{{ image.image_url }}', '{{ image.name }}');">
+                                <i class="bi bi-eye me-2"></i> View
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.stopPropagation(); copyImageUrl('{{ image.image_url }}');">
+                                <i class="bi bi-link-45deg me-2"></i> Copy URL
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.stopPropagation();">
+                                <i class="bi bi-pencil me-2"></i> Rename
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.stopPropagation();">
+                                <i class="bi bi-download me-2"></i> Download
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="event.stopPropagation();">
+                                <i class="bi bi-trash me-2"></i> Delete
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Bulk Actions Bar -->
+<div class="position-fixed bottom-0 start-50 translate-middle-x mb-4" id="bulkActions" style="display: none; z-index: 1000;">
+    <div class="dashboard-card shadow-lg px-4 py-3">
+        <div class="d-flex align-items-center gap-3">
+            <span class="fw-semibold">
+                <span id="selectedCount">0</span> selected
+            </span>
+            <div class="vr"></div>
+            <button class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-folder-plus me-1"></i> Move to
+            </button>
+            <button class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-download me-1"></i> Download
+            </button>
+            <button class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash me-1"></i> Delete
+            </button>
+            <button class="btn btn-sm btn-link text-muted" onclick="clearSelection()">
+                Clear
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+<nav aria-label="Images pagination" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for num in page_obj.paginator.page_range %}
+        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+            <a class="page-link" href="?page={{ num }}{% if selected_category %}&category={{ selected_category }}{% endif %}">{{ num }}</a>
+        </li>
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<!-- Empty State -->
+<div class="dashboard-card text-center py-5">
+    <i class="bi bi-images display-1 text-muted mb-4"></i>
+    <h3>No Images Yet</h3>
+    <p class="text-muted mb-4">Upload your first images to build your brand's visual library</p>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadModal">
+        <i class="bi bi-cloud-upload me-2"></i> Upload Your First Images
+    </button>
+</div>
+{% endif %}
+
+<!-- Image Preview Modal -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imagePreviewTitle">Image Preview</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center" style="background: #f8fafc;">
+                <img id="imagePreviewImg" src="" alt="" class="img-fluid" style="max-height: 70vh;">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="downloadImage()">
+                    <i class="bi bi-download me-2"></i> Download
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modal -->
+<div class="modal fade" id="uploadModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Images</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="upload-area text-center p-5 border-2 border-dashed rounded" 
+                     style="background: #f8fafc; cursor: pointer;">
+                    <i class="bi bi-cloud-upload display-1 text-muted mb-3"></i>
+                    <h5>Drag and drop images here</h5>
+                    <p class="text-muted">or click to browse</p>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                </div>
+                
+                <div class="mt-3">
+                    <label class="form-label">Category</label>
+                    <select class="form-select">
+                        <option>Select category...</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary">
+                    <i class="bi bi-cloud-upload me-2"></i> Upload
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Image selection
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.image-select');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+    
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.image-select:checked');
+        const count = selected.length;
+        
+        selectedCount.textContent = count;
+        bulkActions.style.display = count > 0 ? 'block' : 'none';
+    }
+});
+
+function clearSelection() {
+    document.querySelectorAll('.image-select:checked').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.getElementById('bulkActions').style.display = 'none';
+    document.getElementById('selectedCount').textContent = '0';
+}
+
+function viewImage(url, name) {
+    document.getElementById('imagePreviewTitle').textContent = name;
+    document.getElementById('imagePreviewImg').src = url;
+    new bootstrap.Modal(document.getElementById('imagePreviewModal')).show();
+}
+
+function copyImageUrl(url) {
+    navigator.clipboard.writeText(url).then(function() {
+        // Show toast notification
+        alert('Image URL copied to clipboard!');
+    });
+}
+
+function downloadImage() {
+    const img = document.getElementById('imagePreviewImg');
+    const link = document.createElement('a');
+    link.href = img.src;
+    link.download = document.getElementById('imagePreviewTitle').textContent;
+    link.click();
+}
+
+// Upload area
+document.querySelector('.upload-area').addEventListener('click', function() {
+    document.getElementById('fileInput').click();
+});
+
+// Category filter
+document.getElementById('filterCategory').addEventListener('change', function() {
+    const category = this.value;
+    if (category) {
+        window.location.href = '{% url "brands:images" %}?category=' + category;
+    } else {
+        window.location.href = '{% url "brands:images" %}';
+    }
+});
+</script>
+{% endblock %}

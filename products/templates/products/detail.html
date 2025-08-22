@@ -1,0 +1,269 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ product.name }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<!-- Breadcrumbs -->
+<div class="container pt-5 pb-2">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'products:list' %}">Products</a></li>
+            {% if product.categories.first %}
+                <li class="breadcrumb-item"><a href="{% url 'products:category' product.categories.first.slug %}">{{ product.categories.first.name }}</a></li>
+            {% endif %}
+            <li class="breadcrumb-item active" aria-current="page">{{ product.name }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="container pb-5">
+    <div class="row">
+        <!-- Product Image -->
+        <div class="col-lg-6 mb-4 order-lg-1">
+            <div class="bg-white border rounded p-3">
+                <div class="position-relative">
+                    {% if product.thumbnail %}
+                        <img src="{% if product.thumbnail|slice:':4' == 'http' %}{{ product.thumbnail }}{% else %}{% static product.thumbnail %}{% endif %}" 
+                             alt="{{ product.name }}" 
+                             class="img-fluid rounded w-100" 
+                             style="height: 400px; object-fit: cover;">
+                    {% else %}
+                        <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 400px;">
+                            <i class="bi bi-image text-muted" style="font-size: 4rem;"></i>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Product Features and Details for Desktop -->
+            <div class="d-none d-lg-block">
+                <!-- Product Features -->
+                <div class="mt-4">
+                    <h5 class="fw-bold mb-3">Product Features</h5>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-truck text-success me-2"></i>
+                        <span class="small">Volume discounts available</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-shield-check text-success me-2"></i>
+                        <span class="small">Premium quality guarantee</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-arrow-clockwise text-primary me-2"></i>
+                        <span class="small">30-day return policy</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-palette text-warning me-2"></i>
+                        <span class="small">Unlimited design customization</span>
+                    </div>
+                </div>
+
+                <!-- Product Details -->
+                <div class="mt-4">
+                    <h5 class="fw-bold mb-3">Product Details</h5>
+                    {% for detail in product.product_details %}
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-chevron-right text-muted me-2"></i>
+                            <span class="small">{{ detail }}</span>
+                        </div>
+                    {% empty %}
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-chevron-right text-muted me-2"></i>
+                            <span class="small">100% premium cotton blend</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-chevron-right text-muted me-2"></i>
+                            <span class="small">Pre-shrunk for perfect fit</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-chevron-right text-muted me-2"></i>
+                            <span class="small">Reinforced seams for durability</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-chevron-right text-muted me-2"></i>
+                            <span class="small">Machine washable</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-chevron-right text-muted me-2"></i>
+                            <span class="small">Long-lasting vibrant colors</span>
+                        </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <i class="bi bi-chevron-right text-muted me-2"></i>
+                            <span class="small">Fade-resistant full sublimation</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Product Information -->
+        <div class="col-lg-6 order-lg-2">
+            <!-- Category Badges -->
+            <div class="mb-2">
+                {% for category in product.get_category_names %}
+                    <span class="badge bg-secondary small me-1">{{ category }}</span>
+                {% empty %}
+                    <span class="badge bg-secondary small">Product</span>
+                {% endfor %}
+            </div>
+
+            <!-- Product Name -->
+            <h1 class="h2 fw-bold mb-3">
+                {{ product.name }}
+                {% if current_brand and not current_brand.is_default %}
+                    <span class="badge bg-primary ms-2 fs-6">{{ current_brand.name }}</span>
+                {% endif %}
+            </h1>
+
+            <!-- Description -->
+            <p class="text-muted mb-3">
+                {{ product.description|default:"Create your perfect custom product with our advanced 3D designer. Choose from premium materials and unlimited design possibilities." }}
+            </p>
+
+            <!-- Price Range -->
+            <div class="mb-4">
+                <span class="h3 fw-bold">${{ product.get_min_price|floatformat:2 }} - ${{ product.get_base_price|floatformat:2 }}</span>
+            </div>
+
+            <!-- Customize Button -->
+            <div class="d-grid mb-5">
+                <a href="/designer?product={{ product.id }}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-palette me-2"></i>Customize in 3D Designer
+                </a>
+            </div>
+
+            <!-- Available Sizes & Pricing -->
+            {% if product.sizes %}
+            <div class="mb-4">
+                <h6 class="fw-bold mb-2">Available Sizes</h6>
+                <p class="small text-muted mb-3">Select your preferred size after you created your design.</p>
+                
+                <div class="row g-2">
+                    {% for size in product.sizes %}
+                        {% if forloop.counter0|divisibleby:3 and not forloop.first %}</div><div class="row g-2">{% endif %}
+                        <div class="col-4">
+                            <div class="border rounded p-2 text-center small bg-white">
+                                <div class="fw-bold">{{ size }}</div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Bulk Pricing -->
+            {% if product.prices %}
+            <div class="mb-4">
+                <h6 class="fw-bold mb-2">Bulk Pricing</h6>
+                <p class="small text-muted mb-3">Save more when you order in larger quantities</p>
+                
+                {% for qty, price in product.prices.items %}
+                    <div class="d-flex align-items-center justify-content-between mb-2 p-2 border rounded bg-light">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-box-seam text-primary me-2"></i>
+                            <span class="small fw-bold">{{ qty }}+ pieces</span>
+                        </div>
+                        <span class="fw-bold text-success">${{ price|floatformat:2 }} <small class="text-muted fw-normal">each</small></span>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Product Features (moved here for mobile) -->
+            <div class="mt-4 d-lg-none">
+                <h6 class="fw-bold mb-2">Product Features</h6>
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-truck text-success me-2"></i>
+                    <span class="small">Volume discounts available</span>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-shield-check text-success me-2"></i>
+                    <span class="small">Premium quality guarantee</span>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-arrow-clockwise text-primary me-2"></i>
+                    <span class="small">30-day return policy</span>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-palette text-warning me-2"></i>
+                    <span class="small">Unlimited design customization</span>
+                </div>
+            </div>
+
+            <!-- Product Details (moved here for mobile) -->
+            <div class="mt-4 d-lg-none">
+                <h6 class="fw-bold mb-2">Product Details</h6>
+                {% for detail in product.product_details %}
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-chevron-right text-muted me-2"></i>
+                        <span class="small">{{ detail }}</span>
+                    </div>
+                {% empty %}
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-chevron-right text-muted me-2"></i>
+                        <span class="small">100% premium cotton blend</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-chevron-right text-muted me-2"></i>
+                        <span class="small">Pre-shrunk for perfect fit</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-chevron-right text-muted me-2"></i>
+                        <span class="small">Reinforced seams for durability</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-chevron-right text-muted me-2"></i>
+                        <span class="small">Machine washable</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-chevron-right text-muted me-2"></i>
+                        <span class="small">Long-lasting vibrant colors</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="bi bi-chevron-right text-muted me-2"></i>
+                        <span class="small">Fade-resistant full sublimation</span>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works Section -->
+    <div class="bg-white border rounded p-4 mt-5">
+        <div class="row">
+            <div class="col-12">
+                <h3 class="text-center fw-bold mb-5">How It Works</h3>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="bg-dark rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                    <div class="bg-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="bi bi-palette text-dark" style="font-size: 1.5rem;"></i>
+                    </div>
+                </div>
+                <h5 class="fw-bold mb-2">1. Design</h5>
+                <p class="text-muted small">Use our 3D designer to create your perfect custom design with unlimited possibilities.</p>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                    <div class="bg-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="bi bi-eye text-success" style="font-size: 1.5rem;"></i>
+                    </div>
+                </div>
+                <h5 class="fw-bold mb-2">2. Preview</h5>
+                <p class="text-muted small">See exactly how your design will look with our realistic 3D preview technology.</p>
+            </div>
+            <div class="col-md-4 text-center mb-4">
+                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                    <div class="bg-white rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                        <i class="bi bi-truck text-primary" style="font-size: 1.5rem;"></i>
+                    </div>
+                </div>
+                <h5 class="fw-bold mb-2">3. Receive</h5>
+                <p class="text-muted small">Your custom product is professionally printed and shipped directly to you.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,539 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Shopping Cart{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="h2 mb-4">Shopping Cart</h1>
+    
+    {% if not cart_items %}
+        <div class="text-center py-5">
+            <i class="bi bi-cart3 text-muted" style="font-size: 4rem;"></i>
+            <h3 class="mt-3 mb-2">Your cart is empty</h3>
+            <p class="text-muted mb-4">Start designing to add items to your cart.</p>
+            <a href="{% url 'products:list' %}" class="btn btn-primary btn-lg">
+                <i class="bi bi-plus-circle me-2"></i>Start Designing
+            </a>
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Price</th>
+                                        <th>Quantity</th>
+                                        <th>Total</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in cart_items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                {% if item.thumbnail %}
+                                                <img src="{{ item.thumbnail }}" alt="Product" 
+                                                     class="rounded me-3" style="width: 60px; height: 60px; object-fit: cover;">
+                                                {% else %}
+                                                <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center" 
+                                                     style="width: 60px; height: 60px;">
+                                                    <i class="bi bi-image text-muted"></i>
+                                                </div>
+                                                {% endif %}
+                                                <div>
+                                                    <h6 class="mb-0">{{ item.product_name }}</h6>
+                                                    {% if item.design_name %}
+                                                    <small class="text-muted d-block">Design: {{ item.design_name }}</small>
+                                                    {% endif %}
+                                                    {% if item.sizes_display %}
+                                                        <small class="text-muted d-block">
+                                                            Sizes: {{ item.sizes_display }}
+                                                        </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>${{ item.price }}</td>
+                                        <td>
+                                            <span class="edit-quantity-btn text-decoration-underline" 
+                                                  style="cursor: pointer; color: #0d6efd;" 
+                                                  data-item-id="{{ item.id }}" data-item='{{ item.json_data }}'>
+                                                {{ item.quantity }}
+                                            </span>
+                                        </td>
+                                        <td>${{ item.total_price }}</td>
+                                        <td>
+                                            <form method="POST" class="d-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="remove">
+                                                <input type="hidden" name="item_id" value="{{ item.id }}">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <a href="{% url 'products:list' %}" class="btn btn-outline-primary">
+                                <i class="bi bi-arrow-left me-2"></i>Continue Shopping
+                            </a>
+                            <form method="POST" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="clear">
+                                <button type="submit" class="btn btn-outline-danger">
+                                    <i class="bi bi-x-circle me-2"></i>Clear Cart
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <div>Subtotal</div>
+                            <div>${{ subtotal }}</div>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <div>Shipping</div>
+                            <div>${{ shipping }}</div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between mb-4">
+                            <h5>Total</h5>
+                            <h5>${{ total }}</h5>
+                        </div>
+                        
+                        <div class="text-center mb-3">
+                            <small class="text-muted">
+                                <i class="bi bi-tag me-1"></i>
+                                Have a coupon? You can apply it at checkout
+                            </small>
+                        </div>
+                        
+                        <a href="#" class="btn btn-primary w-100">
+                            <i class="bi bi-lock me-2"></i>Proceed to Checkout
+                        </a>
+                        
+                        {% if not user.is_authenticated %}
+                        <div class="text-center mt-3">
+                            <small class="text-muted">
+                                <i class="bi bi-info-circle me-1"></i>
+                                You can checkout as a guest or <a href="{% url 'accounts:login' %}">login</a>
+                            </small>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Edit Quantity Modal -->
+<div class="modal fade" id="editQuantityModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-cart">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h6 class="modal-title mb-0">
+                    <i class="bi bi-pencil me-1"></i>
+                    Edit Quantities
+                </h6>
+                <button type="button" class="btn-close btn-close-sm" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-2 cart-modal-body">
+                <div class="mb-2" id="editItemPreview">
+                    <!-- Item preview will be populated by JavaScript -->
+                </div>
+                
+                <!-- Size Selector -->
+                <div class="size-selector-modal" id="edit-size-selector-modal">
+                    <!-- Size cards will be populated here -->
+                </div>
+                
+                <!-- Total -->
+                <div class="cart-total-modal mt-2 pt-2 border-top">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-medium">Total Quantity:</span>
+                        <span class="fw-medium" id="edit-cart-quantity-modal">0</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="fw-medium d-flex align-items-center">
+                            Price Each:
+                            <button type="button" class="btn btn-link p-0 ms-1" id="edit-pricing-info-btn" data-bs-toggle="popover">
+                                <i class="bi bi-info-circle" style="font-size: 12px;"></i>
+                            </button>
+                        </span>
+                        <span class="fw-medium text-success" id="edit-cart-price-each-modal">$0.00</span>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">Total:</span>
+                        <span class="fw-bold text-primary" id="edit-cart-total-modal">$0.00</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-primary" id="update-cart-btn">
+                    <i class="bi bi-check"></i> Update Cart
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Cart Modal Styles */
+.modal-dialog.modal-cart {
+    max-width: 450px;
+}
+
+.modal-body.cart-modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+/* Size selector styles */
+.size-selector-modal {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
+.size-card-modal {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 8px;
+    background: #f8f9fa;
+    transition: all 0.2s;
+}
+
+.size-card-modal.has-quantity {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.size-card-modal:hover {
+    border-color: #d1d5db;
+}
+
+.size-name-modal {
+    font-size: 11px;
+    font-weight: 500;
+    margin-bottom: 4px;
+    color: #374151;
+}
+
+.size-qty-controls-modal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+}
+
+/* Quantity controls */
+.qty-btn-modal {
+    width: 24px;
+    height: 24px;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+    color: #374151;
+    user-select: none;
+}
+
+.qty-btn-modal:hover {
+    background: #f3f4f6;
+    border-color: #9ca3af;
+}
+
+.qty-btn-modal:active {
+    background: #e5e7eb;
+}
+
+.qty-btn-modal.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.qty-input-modal {
+    width: 40px;
+    height: 24px;
+    text-align: center;
+    border: 1px solid #d1d5db;
+    border-radius: 3px;
+    padding: 0 2px;
+    font-size: 12px;
+    font-weight: 500;
+    background: #fff;
+}
+
+.qty-input-modal:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px #2563eb;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load product data for modal
+    const products = {{ products_json|safe }};
+    
+    let editSizeQuantities = {}; // Store quantities for each size
+    let editCurrentProduct = null;
+    let editItemId = null;
+    
+    // Edit quantity button click handlers
+    document.querySelectorAll('.edit-quantity-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const itemId = this.getAttribute('data-item-id');
+            const itemData = JSON.parse(this.getAttribute('data-item'));
+            
+            // Find product data
+            const product = products.find(p => p.id == itemData.product_id);
+            if (!product) {
+                alert('Product not found');
+                return;
+            }
+            
+            // Populate modal
+            populateEditModal(itemId, itemData, product);
+            
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('editQuantityModal'));
+            modal.show();
+        });
+    });
+    
+    function populateEditModal(itemId, item, product) {
+        editCurrentProduct = product;
+        editItemId = itemId;
+        editSizeQuantities = {};
+        
+        // Set item preview
+        const preview = document.getElementById('editItemPreview');
+        preview.innerHTML = `
+            <div class="fw-medium">${item.design_name || item.name}</div>
+            <small class="text-muted">${product.name} - Adjust quantities</small>
+        `;
+        
+        // Initialize size quantities from existing item
+        if (item.sizes && typeof item.sizes === 'object') {
+            editSizeQuantities = { ...item.sizes };
+        }
+        
+        // Populate size cards
+        const sizeSelector = document.getElementById('edit-size-selector-modal');
+        sizeSelector.innerHTML = '';
+        
+        product.sizes.forEach((size, index) => {
+            const currentQty = editSizeQuantities[size] || 0;
+            const sizeCard = document.createElement('div');
+            sizeCard.className = 'size-card-modal' + (currentQty > 0 ? ' has-quantity' : '');
+            sizeCard.innerHTML = `
+                <div class="size-name-modal">${size}</div>
+                <div class="size-qty-controls-modal">
+                    <div class="qty-btn-modal" onclick="updateEditSizeQuantity('${size}', -1)">-</div>
+                    <input type="text" class="qty-input-modal" value="${currentQty}" data-size="${size}">
+                    <div class="qty-btn-modal" onclick="updateEditSizeQuantity('${size}', 1)">+</div>
+                </div>
+            `;
+            sizeSelector.appendChild(sizeCard);
+        });
+        
+        // Setup pricing popover
+        setupEditPricingPopover(product.prices);
+        
+        // Add event listeners for manual input
+        setupEditInputListeners();
+        
+        // Update totals
+        updateEditCartTotals();
+    }
+    
+    // Update size quantity in edit modal
+    window.updateEditSizeQuantity = function(size, change) {
+        if (!editSizeQuantities[size]) {
+            editSizeQuantities[size] = 0;
+        }
+        
+        editSizeQuantities[size] = Math.max(0, editSizeQuantities[size] + change);
+        
+        // Update the input field
+        const input = document.querySelector(`#edit-size-selector-modal input[data-size="${size}"]`);
+        if (input) {
+            input.value = editSizeQuantities[size];
+        }
+        
+        // Update card appearance
+        const card = input?.closest('.size-card-modal');
+        if (card) {
+            if (editSizeQuantities[size] > 0) {
+                card.classList.add('has-quantity');
+            } else {
+                card.classList.remove('has-quantity');
+            }
+        }
+        
+        updateEditCartTotals();
+    };
+    
+    // Update cart totals in edit modal
+    function updateEditCartTotals() {
+        const totalQuantity = Object.values(editSizeQuantities).reduce((sum, qty) => sum + qty, 0);
+        
+        // Calculate price per unit based on total quantity
+        let priceEach = editCurrentProduct?.prices[1] || 50;
+        if (editCurrentProduct?.prices) {
+            const sortedTiers = Object.keys(editCurrentProduct.prices).map(Number).sort((a, b) => b - a);
+            for (let tierQty of sortedTiers) {
+                if (totalQuantity >= tierQty) {
+                    priceEach = editCurrentProduct.prices[tierQty];
+                    break;
+                }
+            }
+        }
+        
+        const total = totalQuantity * priceEach;
+        
+        // Update display
+        document.getElementById('edit-cart-quantity-modal').textContent = totalQuantity;
+        document.getElementById('edit-cart-price-each-modal').textContent = '$' + priceEach.toFixed(2);
+        document.getElementById('edit-cart-total-modal').textContent = '$' + total.toFixed(2);
+    }
+    
+    // Setup pricing popover for edit modal
+    function setupEditPricingPopover(prices) {
+        const pricingBtn = document.getElementById('edit-pricing-info-btn');
+        if (!pricingBtn) return;
+        
+        // Destroy existing popover
+        const existingPopover = bootstrap.Popover.getInstance(pricingBtn);
+        if (existingPopover) {
+            existingPopover.dispose();
+        }
+        
+        // Build pricing content
+        let content = '<div class="px-1">';
+        Object.entries(prices).forEach(([qty, price]) => {
+            content += `<div class="d-flex justify-content-between align-items-center py-1 px-1">`;
+            content += `<span class="text-muted me-3">${qty}+ pieces</span>`;
+            content += `<span class="fw-bold text-success text-end">$${parseFloat(price).toFixed(2)} <small class="text-muted fw-normal">each</small></span>`;
+            content += `</div>`;
+        });
+        content += '</div>';
+        
+        new bootstrap.Popover(pricingBtn, {
+            placement: 'top',
+            html: true,
+            title: 'Bulk Pricing',
+            content: content,
+            trigger: 'hover focus'
+        });
+    }
+    
+    // Setup input listeners for manual quantity entry in edit modal
+    function setupEditInputListeners() {
+        document.querySelectorAll('#edit-size-selector-modal .qty-input-modal').forEach(input => {
+            input.addEventListener('input', function() {
+                const size = this.getAttribute('data-size');
+                let value = parseInt(this.value) || 0;
+                value = Math.max(0, Math.min(999, value)); // Clamp between 0 and 999
+                
+                editSizeQuantities[size] = value;
+                this.value = value;
+                
+                // Update card appearance
+                const card = this.closest('.size-card-modal');
+                if (card) {
+                    if (value > 0) {
+                        card.classList.add('has-quantity');
+                    } else {
+                        card.classList.remove('has-quantity');
+                    }
+                }
+                
+                updateEditCartTotals();
+            });
+            
+            input.addEventListener('blur', function() {
+                // Ensure valid value on blur
+                const size = this.getAttribute('data-size');
+                const value = editSizeQuantities[size] || 0;
+                this.value = value;
+            });
+        });
+    }
+    
+    // Update cart button
+    document.getElementById('update-cart-btn')?.addEventListener('click', function() {
+        if (!editItemId) return;
+        
+        // Check if there are any quantities
+        const totalQuantity = Object.values(editSizeQuantities).reduce((sum, qty) => sum + qty, 0);
+        
+        // Show loading state
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Updating...';
+        
+        // Create form data
+        const formData = new FormData();
+        formData.append('action', 'update_sizes');
+        formData.append('item_id', editItemId);
+        formData.append('sizes', JSON.stringify(editSizeQuantities));
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        
+        // Submit update
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            if (response.ok) {
+                // Reload page to show updates
+                window.location.reload();
+            } else {
+                throw new Error('Update failed');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating cart. Please try again.');
+            
+            // Restore button state
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-check"></i> Update Cart';
+        });
+    });
+});
+</script>
+{% endblock %}

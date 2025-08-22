@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Shipping Information - {{ current_brand.name }}{% endblock %}
+
+{% block content %}
+<div class="bg-dark text-white py-5 mb-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 text-center">
+                <h1 class="display-4 fw-bold mb-3">Shipping Information</h1>
+                <p class="text-white-50">Last updated: December 2024</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            
+            <div class="alert alert-info mb-4">
+                <h4 class="alert-heading"><i class="bi bi-geo-alt"></i> Shipping Availability</h4>
+                <p class="mb-0"><strong>We currently ship only to addresses within the United States.</strong> International shipping is not available at this time.</p>
+            </div>
+            
+            <h2>Shipping Details</h2>
+            <p>We ship ALL orders from our Virginia, USA office via USPS or UPS to destinations within the United States.</p>
+            
+            <h3>Processing Time</h3>
+            <ul>
+                <li>Orders will ship within 4-6 weeks</li>
+                <li>Tracking number will be emailed when we ship</li>
+            </ul>
+            
+            <h3>Shipping Carriers</h3>
+            <p>We use trusted carriers to deliver your orders:</p>
+            <ul>
+                <li>USPS (United States Postal Service)</li>
+                <li>UPS (United Parcel Service)</li>
+            </ul>
+            
+            <h2>Shipping Origin</h2>
+            <p>All orders are shipped from:</p>
+            <ul>
+                <li>Location: Virginia, USA</li>
+                <li>Business Days: Monday through Friday</li>
+                <li>Holidays: Orders placed on federal holidays will be processed the next business day</li>
+            </ul>
+            
+            <h2>Order Tracking</h2>
+            <p>Once your order ships, you will receive an email confirmation with:</p>
+            <ul>
+                <li>Your tracking number</li>
+                <li>A link to track your package</li>
+                <li>Estimated delivery date</li>
+            </ul>
+            
+            <h2>Delivery Issues</h2>
+            <h3>Missing or Lost Packages</h3>
+            <p>If your package shows as delivered but you haven't received it:</p>
+            <ul>
+                <li>Check with neighbors or building management</li>
+                <li>Look for the package in secure locations around your property</li>
+                <li>Contact the shipping carrier directly</li>
+                <li>If still not located, contact our customer service within 48 hours</li>
+            </ul>
+            
+            <h3>Damaged Items</h3>
+            <p>If you receive a damaged item:</p>
+            <ul>
+                <li>Take photos of the damaged item and packaging</li>
+                <li>Contact us within 48 hours of delivery</li>
+                <li>Keep all original packaging materials</li>
+                <li>We will arrange for a replacement or refund</li>
+            </ul>
+            
+            <h2>Shipping Restrictions</h2>
+            <p>Please note the following restrictions:</p>
+            <ul>
+                <li><strong>United States only:</strong> We do not ship internationally at this time</li>
+                <li>We cannot ship to P.O. Boxes for Express or Overnight delivery</li>
+                <li>Some items may have shipping restrictions due to size or weight</li>
+                <li>Hazardous materials cannot be shipped via air transport</li>
+            </ul>
+            
+            <h2>Holiday Shipping</h2>
+            <p>During peak holiday seasons:</p>
+            <ul>
+                <li>Order early to ensure delivery by your desired date</li>
+                <li>Processing times may be extended by 1-2 business days</li>
+                <li>Carrier delays may occur due to high volume</li>
+                <li>Express and Overnight shipping recommended for time-sensitive orders</li>
+            </ul>
+            
+            <h2>Returns & Exchanges</h2>
+            <p>For information about returning or exchanging items, please see our <a href="{% url 'support:return_policy' %}" class="text-decoration-underline">Return Policy</a>.</p>
+            
+            <h2>Contact Us</h2>
+            <p>If you have questions about shipping, please contact us:</p>
+            <ul>
+                <li>Email: help@model2design.app</li>
+                <li>Hours: Monday-Friday, 9:00 AM - 5:00 PM EST</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

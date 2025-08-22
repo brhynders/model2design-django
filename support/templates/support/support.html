@@ -1,0 +1,821 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Support Center - {{ current_brand.name }}{% endblock %}
+
+{% block content %}
+<!-- Page Title Section with Breadcrumbs -->
+<div class="bg-dark pt-4 pb-5">
+    <div class="container">
+        <!-- Breadcrumbs -->
+        <nav aria-label="breadcrumb" class="mb-4 text-center">
+            <ol class="breadcrumb bg-transparent p-0 mb-0 justify-content-center">
+                <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-white-50 text-decoration-none">Home</a></li>
+                <li class="breadcrumb-item text-white active" aria-current="page">Support</li>
+            </ol>
+        </nav>
+        
+        <div class="row">
+            <div class="col-12">
+                <div class="text-center">
+                    <h1 class="display-4 fw-bold text-white mb-3">Support Center</h1>
+                    <p class="lead text-white-50">
+                        Get help with your orders, account, and designs
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Links Section -->
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <p class="lead text-muted">Select a support option below to quickly find the help you need</p>
+    </div>
+    
+    <div class="row g-4 mb-5">
+        <div class="col-md-4">
+            <a href="#faq" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 text-center p-4 support-card">
+                    <div class="card-body">
+                        <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                            <i class="bi bi-question-circle text-white" style="font-size: 2rem;"></i>
+                        </div>
+                        <h5 class="fw-bold mb-2">FAQs</h5>
+                        <p class="text-muted small mb-0">Find quick answers to common questions</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="#tutorials" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 text-center p-4 support-card">
+                    <div class="card-body">
+                        <div class="bg-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                            <i class="bi bi-play-circle text-white" style="font-size: 2rem;"></i>
+                        </div>
+                        <h5 class="fw-bold mb-2">Video Tutorials</h5>
+                        <p class="text-muted small mb-0">Learn how to use our design tools</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="#contact" class="text-decoration-none">
+                <div class="card border-0 shadow-sm h-100 text-center p-4 support-card">
+                    <div class="card-body">
+                        <div class="bg-info rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                            <i class="bi bi-headset text-white" style="font-size: 2rem;"></i>
+                        </div>
+                        <h5 class="fw-bold mb-2">Contact Support</h5>
+                        <p class="text-muted small mb-0">Get personalized help from our team</p>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- FAQ Section -->
+    <div id="faq" class="mb-5 pt-5">
+        <h2 class="text-center fw-bold mb-5">Frequently Asked Questions</h2>
+        
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <div class="accordion" id="faqAccordion">
+                    <!-- Orders FAQs -->
+                    <h5 class="fw-bold mb-3 mt-4">Orders</h5>
+                    
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                How long does shipping take?
+                            </button>
+                        </h2>
+                        <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Standard shipping typically takes 5-7 business days. Production time is usually 4-6 weeks before shipping.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                Can I track my order?
+                            </button>
+                        </h2>
+                        <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes! Once your order ships, you'll receive a tracking number via email. You can also track your order status by logging into your account and viewing your order history.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                What is your return policy?
+                            </button>
+                        </h2>
+                        <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                We offer a 30-day return policy for all products. Items must be unused and in original condition. Custom designed products may have different return conditions. Please review our full return policy for details.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                Can I buy just ONE shirt?
+                            </button>
+                        </h2>
+                        <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes, there is no minimum order requirement, but we do have discounts when ordering in bulk.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq5">
+                                How will my order ship?
+                            </button>
+                        </h2>
+                        <div id="faq5" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                We ship ALL orders from our Virginia, USA office via USPS or UPS. Tracking # emailed when we ship. Will ship within 4-6 weeks.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account FAQs -->
+                    <h5 class="fw-bold mb-3 mt-5">Account</h5>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq6">
+                                How do I reset my password?
+                            </button>
+                        </h2>
+                        <div id="faq6" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Click the "Forgot Password" link on the login page. Enter your email address and we'll send you instructions to reset your password. Check your spam folder if you don't see the email within a few minutes.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq7">
+                                Can I save my designs?
+                            </button>
+                        </h2>
+                        <div id="faq7" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes! When you create an account, all your designs are automatically saved to your design library. You can access, edit, and reorder your saved designs at any time from your account dashboard.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq8">
+                                Can I share my 3D design with friends?
+                            </button>
+                        </h2>
+                        <div id="faq8" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes, designs saved in 'My Designs' can be shared by copying the link generated by pressing 'Share' on your specific design.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Designing FAQs -->
+                    <h5 class="fw-bold mb-3 mt-5">Designing</h5>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq9">
+                                What file formats can I upload?
+                            </button>
+                        </h2>
+                        <div id="faq9" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Our design tool accepts JPG, PNG, SVG, and PDF files. For best results, we recommend high-resolution images (300 DPI or higher) in PNG format with transparent backgrounds.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq10">
+                                Can I use my own fonts?
+                            </button>
+                        </h2>
+                        <div id="faq10" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Our design editor includes a wide selection of fonts. While you cannot upload custom fonts directly, you can create text in your preferred font using external software and upload it as an image.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq11">
+                                Can I add logos and designs?
+                            </button>
+                        </h2>
+                        <div id="faq11" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes, you can add logos and designs to any surface of your shirt. Your logo can be added and saved in "My Images" to be used and saved for future use.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq12">
+                                How is my shirt made?
+                            </button>
+                        </h2>
+                        <div id="faq12" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                All products are custom-designed, dye-sublimated, cut, and hand-sewn and manufactured specifically to your custom design.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq13">
+                                Do I need permission to use logos on the app?
+                            </button>
+                        </h2>
+                        <div id="faq13" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                No, ALL logos and designs are available for you to use when designing your custom shirt.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- General FAQs -->
+                    <h5 class="fw-bold mb-3 mt-5">General</h5>
+
+                    <div class="accordion-item border-0 mb-3 shadow-sm">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq14">
+                                Need help? Have questions?
+                            </button>
+                        </h2>
+                        <div id="faq14" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Email help@model2design.app or use our contact form for personalized assistance.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Tutorials Section -->
+    <div id="tutorials" class="bg-light rounded py-5 px-3 px-md-5 mb-5">
+        <h2 class="text-center fw-bold mb-5">Video Tutorials</h2>
+        
+        <div class="row g-4">
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm h-100 tutorial-card" 
+                     data-video-url="https://videos.model2design.app/Account%20Setup.mp4"
+                     data-title="Creating An Account"
+                     style="cursor: pointer;">
+                    <div class="position-relative tutorial-video-container">
+                        <!-- Thumbnail/Placeholder (shown by default) -->
+                        <div class="tutorial-thumbnail">
+                            <div class="bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="bi bi-play-circle text-white" style="font-size: 3rem; text-shadow: 0 0 10px rgba(0,0,0,0.5);"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Video Player (hidden by default) -->
+                        <div class="tutorial-video d-none">
+                            <video class="w-100" style="height: 200px; object-fit: cover;" controls preload="none">
+                                <source src="https://videos.model2design.app/Account%20Setup.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        
+                        <span class="position-absolute top-0 end-0 m-2 badge bg-dark tutorial-duration-badge" style="z-index: 10;">3:15</span>
+                        <span class="position-absolute start-0 m-2 badge bg-primary tutorial-category-badge" style="bottom: 8px; z-index: 10;">Account</span>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-2">Creating An Account</h6>
+                        <p class="text-muted small">Step-by-step guide to setting up your Model2Design account and getting started.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm h-100 tutorial-card" 
+                     data-video-url="https://videos.model2design.app/Creating%20a%20design.mp4"
+                     data-title="Creating A Design"
+                     style="cursor: pointer;">
+                    <div class="position-relative tutorial-video-container">
+                        <!-- Thumbnail/Placeholder (shown by default) -->
+                        <div class="tutorial-thumbnail">
+                            <div class="bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="bi bi-play-circle text-white" style="font-size: 3rem; text-shadow: 0 0 10px rgba(0,0,0,0.5);"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Video Player (hidden by default) -->
+                        <div class="tutorial-video d-none">
+                            <video class="w-100" style="height: 200px; object-fit: cover;" controls preload="none">
+                                <source src="https://videos.model2design.app/Creating%20a%20design.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        
+                        <span class="position-absolute top-0 end-0 m-2 badge bg-dark tutorial-duration-badge" style="z-index: 10;">4:30</span>
+                        <span class="position-absolute start-0 m-2 badge bg-primary tutorial-category-badge" style="bottom: 8px; z-index: 10;">Design</span>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-2">Creating A Design</h6>
+                        <p class="text-muted small">Learn how to create your first custom design using our design tools.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card border-0 shadow-sm h-100 tutorial-card" 
+                     data-video-url="https://videos.model2design.app/Saving%20your%20design.mp4"
+                     data-title="Saving A Design"
+                     style="cursor: pointer;">
+                    <div class="position-relative tutorial-video-container">
+                        <!-- Thumbnail/Placeholder (shown by default) -->
+                        <div class="tutorial-thumbnail">
+                            <div class="bg-secondary d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <i class="bi bi-play-circle text-white" style="font-size: 3rem; text-shadow: 0 0 10px rgba(0,0,0,0.5);"></i>
+                            </div>
+                        </div>
+                        
+                        <!-- Video Player (hidden by default) -->
+                        <div class="tutorial-video d-none">
+                            <video class="w-100" style="height: 200px; object-fit: cover;" controls preload="none">
+                                <source src="https://videos.model2design.app/Saving%20your%20design.mp4" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                        
+                        <span class="position-absolute top-0 end-0 m-2 badge bg-dark tutorial-duration-badge" style="z-index: 10;">2:20</span>
+                        <span class="position-absolute start-0 m-2 badge bg-primary tutorial-category-badge" style="bottom: 8px; z-index: 10;">Design</span>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="fw-bold mb-2">Saving A Design</h6>
+                        <p class="text-muted small">How to save your designs to your library for future use and reordering.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Forms Section -->
+    <div id="contact" class="pt-5">
+        <h2 class="text-center fw-bold mb-2">Contact Support</h2>
+        
+        <div class="row">
+            <div class="col-lg-10 mx-auto">
+                <p class="text-center text-muted mb-5">
+                    Can't find what you're looking for? Our support team is here to help. Select a category below to get started.
+                </p>
+                
+                <!-- Support Category Tabs -->
+                <ul class="nav nav-pills justify-content-center mb-4" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="pill" data-bs-target="#orders-form" type="button">
+                            <i class="bi bi-box me-2"></i>Orders
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#account-form" type="button">
+                            <i class="bi bi-person me-2"></i>Account
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#designing-form" type="button">
+                            <i class="bi bi-palette me-2"></i>Designing
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#request-model-form" type="button">
+                            <i class="bi bi-box-seam me-2"></i>Request a Model
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#website-form" type="button">
+                            <i class="bi bi-bug me-2"></i>Website Problem
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="pill" data-bs-target="#general-form" type="button">
+                            <i class="bi bi-chat-dots me-2"></i>General
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- Tab Content -->
+                <div class="tab-content">
+                    <!-- Orders Form -->
+                    <div class="tab-pane fade show active" id="orders-form">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="fw-bold mb-4">Order Support</h5>
+                                <form action="{% url 'support:submit' %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="category" value="orders">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.orders.name.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.orders.name }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.orders.email.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.orders.email }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.orders.order_number.label }}</label>
+                                            {{ forms.orders.order_number }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.orders.issue_type.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.orders.issue_type }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.orders.message.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.orders.message }}
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-send me-2"></i>Submit Request
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Form -->
+                    <div class="tab-pane fade" id="account-form">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="fw-bold mb-4">Account Support</h5>
+                                <form action="{% url 'support:submit' %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="category" value="account">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.account.name.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.account.name }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.account.email.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.account.email }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.account.issue_type.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.account.issue_type }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.account.message.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.account.message }}
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-send me-2"></i>Submit Request
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Designing Form -->
+                    <div class="tab-pane fade" id="designing-form">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="fw-bold mb-4">Design Support</h5>
+                                <form action="{% url 'support:submit' %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="category" value="designing">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.designing.name.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.designing.name }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.designing.email.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.designing.email }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.designing.issue_type.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.designing.issue_type }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.designing.product.label }}</label>
+                                            {{ forms.designing.product }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.designing.message.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.designing.message }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.designing.browser_info.label }}</label>
+                                            {{ forms.designing.browser_info }}
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-send me-2"></i>Submit Request
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Request a Model Form -->
+                    <div class="tab-pane fade" id="request-model-form">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="fw-bold mb-4">Request a 3D Model</h5>
+                                <form action="{% url 'support:submit' %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="category" value="request_model">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.request_model.name.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.request_model.name }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.request_model.email.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.request_model.email }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.request_model.model_type.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.request_model.model_type }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.request_model.model_name.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.request_model.model_name }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.request_model.message.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.request_model.message }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.request_model.priority.label }}</label>
+                                            {{ forms.request_model.priority }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.request_model.intended_use.label }}</label>
+                                            {{ forms.request_model.intended_use }}
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-send me-2"></i>Submit Request
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Website Problem Form -->
+                    <div class="tab-pane fade" id="website-form">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="fw-bold mb-4">Report a Website Problem</h5>
+                                <form action="{% url 'support:submit' %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="category" value="website">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.website.name.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.website.name }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.website.email.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.website.email }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.website.page_url.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.website.page_url }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.website.message.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.website.message }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.website.browser.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.website.browser }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.website.device.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.website.device }}
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-send me-2"></i>Submit Report
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                                                            </div>
+                        </div>
+                    </div>
+
+                    <!-- General Form -->
+                    <div class="tab-pane fade" id="general-form">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h5 class="fw-bold mb-4">General Inquiry</h5>
+                                <form action="{% url 'support:submit' %}" method="POST">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="category" value="general">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.general.name.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.general.name }}
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">{{ forms.general.email.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.general.email }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.general.subject.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.general.subject }}
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">{{ forms.general.message.label }} <span class="text-danger">*</span></label>
+                                            {{ forms.general.message }}
+                                        </div>
+                                        <div class="col-12">
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-send me-2"></i>Send Message
+                                            </button>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Alert Messages -->
+                {% if messages %}
+                <div id="form-alert" class="mt-4 mb-4">
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Additional Support Info -->
+                <div class="mt-5 text-center">
+                    <div class="bg-light rounded p-4">
+                        <h5 class="fw-bold mb-3">Need Immediate Assistance?</h5>
+                        <p class="text-muted mb-3">Our support team typically responds within 24 hours.</p>
+                        <div class="row g-3 justify-content-center">
+                            <div class="col-auto">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-envelope text-primary me-2"></i>
+                                    <span>help@model2design.app</span>
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-clock text-primary me-2"></i>
+                                    <span>Mon-Fri 9AM-5PM EST</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Custom styles for support page */
+.nav-pills .nav-link {
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+    margin: 0 0.25rem;
+    border-radius: 0.375rem;
+}
+
+.nav-pills .nav-link:hover:not(.active) {
+    background-color: #f8f9fa;
+}
+
+.nav-pills .nav-link.active {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    color: white !important;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: #f8f9fa;
+    color: #0d6efd;
+}
+
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: #dee2e6;
+}
+
+/* Support card hover effect */
+.support-card {
+    transition: box-shadow 0.3s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.support-card:hover {
+    box-shadow: 0 .75rem 1.5rem rgba(0,0,0,.15) !important;
+    transform: translateY(-2px);
+}
+</style>
+
+<script>
+// Smooth scroll to sections
+document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    });
+});
+
+// Auto-scroll to alert after form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const formAlert = document.getElementById('form-alert');
+    if (formAlert) {
+        // Small delay to ensure page is fully loaded
+        setTimeout(function() {
+            formAlert.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }, 100);
+    }
+    
+    // Tutorial card click handlers
+    const tutorialCards = document.querySelectorAll('.tutorial-card');
+    tutorialCards.forEach(card => {
+        const thumbnail = card.querySelector('.tutorial-thumbnail');
+        const videoContainer = card.querySelector('.tutorial-video');
+        const video = videoContainer.querySelector('video');
+        const durationBadge = card.querySelector('.tutorial-duration-badge');
+        const categoryBadge = card.querySelector('.tutorial-category-badge');
+        
+        // Handle thumbnail click to start video
+        thumbnail.addEventListener('click', function(e) {
+            e.stopPropagation();
+            
+            // Show video, hide thumbnail
+            thumbnail.classList.add('d-none');
+            videoContainer.classList.remove('d-none');
+            
+            // Hide badges when video starts
+            if (durationBadge) durationBadge.classList.add('d-none');
+            if (categoryBadge) categoryBadge.classList.add('d-none');
+            
+            // Start playing the video
+            video.play().catch(err => {
+                console.log('Video play failed:', err);
+            });
+        });
+        
+        // Let native video controls handle play/pause - no custom handler needed
+        
+        // Prevent card click when clicking on video controls
+        videoContainer.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    });
+});
+</script>
+{% endblock %}

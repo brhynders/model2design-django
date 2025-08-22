@@ -1,0 +1,23 @@
+/* Bootstrap theme here - css vars and component class overrides */
+
+/* Center dropdown menu links on mobile */
+@media (max-width: 991.98px) {
+    .navbar-nav .dropdown-menu {
+        text-align: center;
+        border: none;
+        background-color: transparent;
+        position: static !important;
+        transform: none !important;
+        margin-top: 0;
+        padding: 0.5rem 0;
+    }
+    
+    .navbar-nav .dropdown-item {
+        padding: 0.5rem 1rem;
+        font-size: 0.95rem;
+    }
+    
+    .navbar-nav .dropdown-item:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+}

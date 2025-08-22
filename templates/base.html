@@ -1,0 +1,373 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{% static 'favicon.png' %}" type="image/png">
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/bootstrap-icons.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/theme.css' %}">
+    <title>{% block title %}{{ page_title|default:"Model2Design" }}{% endblock %}</title>
+    <!-- Brand Styles -->
+    <style>{{ brand_styles|safe }}</style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-light">
+    <!-- Guest Alert -->
+    {% if not user.is_authenticated %}
+    <div class="guest-alert bg-warning text-dark py-2">
+        <div class="container d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                You're browsing as a guest. <a href="{% url 'accounts:register' %}" class="text-dark fw-bold">Create an account</a> to save your designs and orders.
+            </span>
+            <button type="button" class="btn-close btn-close-dark btn-sm" onclick="this.parentElement.parentElement.style.display='none'"></button>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Header Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top py-3">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{% url 'home' %}">
+                {% if current_brand.logo_url %}
+                    <img src="{{ current_brand.logo_url }}" width="220" alt="{{ current_brand.name }}" />
+                {% else %}
+                    <img src="{% static 'logo-dark.png' %}" width="220" alt="{{ current_brand.name }}" />
+                {% endif %}
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav mx-auto gap-2 text-center">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'home' %}">Home</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="productsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Products
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="productsDropdown">
+                            <li><a class="dropdown-item" href="{% url 'products:list' %}">All Products</a></li>
+                            {% if brand_product_categories %}
+                                {% for category in brand_product_categories %}
+                                <li><a class="dropdown-item" href="{% url 'products:category' category_slug=category.slug %}">{{ category.name }}</a></li>
+                                {% endfor %}
+                            {% endif %}
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">My Saved Designs</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="supportDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            Support
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="supportDropdown">
+                            <li><a class="dropdown-item" href="{% url 'support:support' %}">Support Center</a></li>
+                            <li><a class="dropdown-item" href="{% url 'support:support' %}#faq">FAQs</a></li>
+                            <li><a class="dropdown-item" href="{% url 'support:support' %}#tutorials">Tutorials</a></li>
+                            <li><a class="dropdown-item" href="{% url 'support:support' %}#contact">Contact Us</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Partner With Us</a>
+                    </li>
+                </ul>
+                
+                <div class="d-flex align-items-center justify-content-center flex-column flex-lg-row gap-3 mt-3 mt-lg-0">
+                    <!-- Cart Link -->
+                    <a href="#" class="text-dark position-relative text-decoration-none d-flex align-items-center" data-bs-toggle="offcanvas" data-bs-target="#cartSidebar">
+                        <i class="bi bi-cart3 fs-6 me-1"></i>
+                        Cart
+                        {% if cart_count > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ cart_count }}
+                            <span class="visually-hidden">items in cart</span>
+                        </span>
+                        {% endif %}
+                    </a>
+                    
+                    <!-- User Dropdown -->
+                    {% if user.is_authenticated %}
+                    <div class="dropdown">
+                        <button class="btn btn-light dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i>
+                            <span>{{ user.name|default:user.username }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{% url 'accounts:dashboard' %}"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+                            <li><a class="dropdown-item" href="{% url 'accounts:profile' %}"><i class="bi bi-person-gear me-2"></i>Profile Settings</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-bag-check me-2"></i>My Orders</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="bi bi-palette me-2"></i>My Designs</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'accounts:logout' %}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </div>
+                    {% else %}
+                    <!-- Login/Register Buttons -->
+                    <div class="d-flex gap-2 flex-column flex-sm-row w-100 w-lg-auto">
+                        <a href="{% url 'accounts:login' %}" class="btn btn-outline-primary">Login</a>
+                        <a href="{% url 'accounts:register' %}" class="btn btn-primary">Register</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Cart Sidebar -->
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="cartSidebar">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title">Shopping Cart</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <!-- Cart content will be loaded here dynamically -->
+        <div class="offcanvas-body">
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    {% block content %}{% endblock %}
+
+    <!-- Footer -->
+    <footer class="bg-white text-dark">
+        <div class="container py-5">
+            <div class="row g-4">
+                <!-- Brand Section -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="mb-4">
+                        {% if current_brand.logo_url %}
+                            <img src="{{ current_brand.logo_url }}" 
+                                 alt="{{ current_brand.name }}" 
+                                 class="mb-3" 
+                                 style="max-height: 60px;">
+                        {% else %}
+                            <h4 class="text-dark mb-3 fw-bold">{{ current_brand.name }}</h4>
+                        {% endif %}
+                        <p class="text-muted mb-3">
+                            {% if current_brand.description %}
+                                {{ current_brand.description }}
+                            {% else %}
+                                Design and customize premium products with our advanced 3D modeling platform. 
+                                Create unique designs that stand out from the crowd.
+                            {% endif %}
+                        </p>
+                        <div class="d-flex gap-3">
+                            <!-- Social media links can be added here when available -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Links -->
+                <div class="col-lg-2 col-md-6">
+                    <h5 class="text-dark mb-3">Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <a href="{% url 'home' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>Home
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'products:list' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>Products
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="#" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>My Designs
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'support:support' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>Support
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Account -->
+                <div class="col-lg-2 col-md-6">
+                    <h5 class="text-dark mb-3">Account</h5>
+                    <ul class="list-unstyled">
+                        {% if not user.is_authenticated %}
+                        <li class="mb-2">
+                            <a href="{% url 'accounts:login' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>Login
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'accounts:register' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>Register
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="mb-2">
+                            <a href="{% url 'cart:view' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>Shopping Cart
+                            </a>
+                        </li>
+                        {% if user.is_authenticated %}
+                        <li class="mb-2">
+                            <a href="{% url 'accounts:profile' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>My Profile
+                            </a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <!-- Support -->
+                <div class="col-lg-2 col-md-6">
+                    <h5 class="text-dark mb-3">Support</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <a href="{% url 'support:support' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>Help Center
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'support:support' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>FAQ
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'support:shipping_info' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>Shipping Info
+                            </a>
+                        </li>
+                        <li class="mb-2">
+                            <a href="{% url 'support:return_policy' %}" class="text-muted text-decoration-none hover-text-primary">
+                                <i class="bi bi-chevron-right me-1"></i>Returns
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Contact Info -->
+                <div class="col-lg-2 col-md-6">
+                    <h5 class="text-dark mb-3">Contact</h5>
+                    <ul class="list-unstyled">
+                        <li class="mb-3">
+                            <a href="mailto:support@model2design.app" class="d-flex align-items-center text-decoration-none text-muted">
+                                <i class="bi bi-envelope-fill me-2"></i>
+                                support@model2design.app
+                            </a>
+                        </li>
+                        <li class="mb-3 d-flex align-items-center text-muted">
+                            <i class="bi bi-clock-fill text-muted me-2"></i>
+                            Mon-Fri: 9AM-5PM EST
+                        </li>
+                        <li>
+                            <a href="{% url 'support:support' %}" class="btn btn-primary">Send Us a Message</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <hr class="my-4 border-light">
+
+            <!-- Bottom Footer -->
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="text-muted mb-0">
+                        <small>&copy; {% now "Y" %} {{ current_brand.name }} Group Inc. - All rights reserved.</small>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-md-end justify-content-start flex-wrap gap-3 mt-3 mt-md-0">
+                        <a href="{% url 'support:privacy_policy' %}" class="text-muted text-decoration-none hover-text-primary">
+                            <small>Privacy Policy</small>
+                        </a>
+                        <a href="{% url 'support:terms_of_service' %}" class="text-muted text-decoration-none hover-text-primary">
+                            <small>Terms of Service</small>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'js/scripts.js' %}"></script>
+    {% block extra_scripts %}{% endblock %}
+    
+    <!-- Cart Sidebar Script -->
+    <script>
+    // Function to refresh cart sidebar content
+    function refreshCartSidebar() {
+        fetch('{% url "cart:sidebar" %}')
+            .then(response => response.text())
+            .then(html => {
+                const currentContent = document.querySelector('#cartSidebar .offcanvas-body');
+                if (currentContent) {
+                    currentContent.innerHTML = html;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading cart sidebar:', error);
+                const currentContent = document.querySelector('#cartSidebar .offcanvas-body');
+                if (currentContent) {
+                    currentContent.innerHTML = '<div class="text-center py-4"><p class="text-muted">Error loading cart</p></div>';
+                }
+            });
+    }
+
+    // Load cart sidebar when it's opened
+    document.addEventListener('DOMContentLoaded', function() {
+        const cartSidebar = document.getElementById('cartSidebar');
+        if (cartSidebar) {
+            cartSidebar.addEventListener('show.bs.offcanvas', function() {
+                refreshCartSidebar();
+            });
+        }
+    });
+
+    // Function to update cart count in header (for future use)
+    function updateCartCount(count) {
+        const cartBadge = document.querySelector('[data-bs-target="#cartSidebar"] .badge');
+        
+        if (count > 0) {
+            if (!cartBadge) {
+                // Create badge if it doesn't exist
+                const cartLink = document.querySelector('[data-bs-target="#cartSidebar"]');
+                const badge = document.createElement('span');
+                badge.className = 'position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger';
+                badge.innerHTML = `${count}<span class="visually-hidden">items in cart</span>`;
+                cartLink.appendChild(badge);
+            } else {
+                cartBadge.innerHTML = `${count}<span class="visually-hidden">items in cart</span>`;
+                cartBadge.style.display = 'inline-block';
+            }
+        } else {
+            if (cartBadge) {
+                cartBadge.style.display = 'none';
+            }
+        }
+    }
+    </script>
+    
+    <!-- Footer Styles -->
+    <style>
+    .hover-text-primary:hover {
+        color: var(--brand-primary) !important;
+        transition: color 0.3s ease;
+    }
+    
+    footer a:hover i {
+        color: var(--brand-primary) !important;
+        transition: color 0.3s ease;
+    }
+    </style>
+</body>
+</html>

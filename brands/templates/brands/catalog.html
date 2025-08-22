@@ -1,0 +1,378 @@
+{% extends "brands/base_brand.html" %}
+{% load static %}
+
+{% block title %}Product Catalog{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">Product Catalog</h1>
+    <p class="page-description">Manage which products are available for your brand</p>
+    
+    <div class="page-actions">
+        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
+            <i class="bi bi-plus-lg me-2"></i> Add Products
+        </button>
+    </div>
+</div>
+
+<!-- Stats Bar -->
+<div class="stats-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(79, 70, 229, 0.1); color: var(--primary-color);">
+            <i class="bi bi-box-seam"></i>
+        </div>
+        <div class="stat-value">{{ total_products|default:0 }}</div>
+        <div class="stat-label">Total Products</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+            <i class="bi bi-check-circle"></i>
+        </div>
+        <div class="stat-value">{{ active_products|default:0 }}</div>
+        <div class="stat-label">Active Products</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(251, 146, 60, 0.1); color: #fb923c;">
+            <i class="bi bi-pause-circle"></i>
+        </div>
+        <div class="stat-value">{{ inactive_products|default:0 }}</div>
+        <div class="stat-label">Inactive Products</div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+            <i class="bi bi-currency-dollar"></i>
+        </div>
+        <div class="stat-value">${{ estimated_revenue|default:0 }}</div>
+        <div class="stat-label">Est. Monthly Revenue</div>
+    </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="dashboard-card mb-4">
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                <input type="text" class="form-control" placeholder="Search products..." id="searchProducts">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" id="filterStatus">
+                <option value="">All Products</option>
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select" id="filterCategory">
+                <option value="">All Categories</option>
+                <option value="electronics">Electronics</option>
+                <option value="clothing">Clothing</option>
+                <option value="accessories">Accessories</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-outline-secondary w-100">
+                <i class="bi bi-funnel me-1"></i> Filter
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Products Table -->
+{% if brand_products %}
+<div class="dashboard-card">
+    <div class="card-header-custom">
+        <h3 class="card-title-custom">
+            <i class="bi bi-list-check text-primary"></i>
+            Product Catalog
+        </h3>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th width="60">
+                        <input type="checkbox" class="form-check-input" id="selectAll">
+                    </th>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Price</th>
+                    <th>Commission</th>
+                    <th>Status</th>
+                    <th>Sales</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for brand_product in brand_products %}
+                <tr>
+                    <td>
+                        <input type="checkbox" class="form-check-input product-select" value="{{ brand_product.id }}">
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <img src="{% if brand_product.product.thumbnail %}{% static brand_product.product.thumbnail %}{% else %}https://via.placeholder.com/50x50/e2e8f0/64748b?text=Product{% endif %}" 
+                                 alt="{{ brand_product.product.name }}" 
+                                 class="rounded me-3" 
+                                 style="width: 50px; height: 50px; object-fit: cover;" 
+                                 onerror="this.src='https://via.placeholder.com/50x50/e2e8f0/64748b?text=Product';">
+                            <div>
+                                <div class="fw-semibold">{{ brand_product.product.name }}</div>
+                                <small class="text-muted">{{ brand_product.product.description|truncatechars:50 }}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if brand_product.product.categories.all %}
+                            {% for category in brand_product.product.categories.all %}
+                            <span class="badge bg-light text-dark me-1">{{ category.name }}</span>
+                            {% endfor %}
+                        {% else %}
+                        <span class="badge bg-light text-dark">Uncategorized</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <strong>${{ brand_product.price|floatformat:2 }}</strong>
+                    </td>
+                    <td>
+                        <span class="text-success">${{ brand_product.commission_amount|floatformat:2 }}</span>
+                        <small class="text-muted d-block">{{ brand_product.commission_rate|floatformat:1 }}%</small>
+                    </td>
+                    <td>
+                        {% if brand_product.is_available %}
+                        <span class="badge bg-success">Active</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="fw-semibold">{{ brand_product.total_sales|default:0 }}</div>
+                        <small class="text-muted">${{ brand_product.total_revenue|default:0|floatformat:0 }}</small>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            {% if brand_product.is_available %}
+                            <form method="post" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="deactivate">
+                                <input type="hidden" name="product_id" value="{{ brand_product.id }}">
+                                <button type="submit" class="btn btn-outline-warning" title="Deactivate">
+                                    <i class="bi bi-pause"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <form method="post" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="activate">
+                                <input type="hidden" name="product_id" value="{{ brand_product.id }}">
+                                <button type="submit" class="btn btn-outline-success" title="Activate">
+                                    <i class="bi bi-play"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <button class="btn btn-outline-primary" title="Edit">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-outline-info" title="View Analytics">
+                                <i class="bi bi-graph-up"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="card-footer">
+        <nav aria-label="Product pagination">
+            <ul class="pagination justify-content-center mb-0">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1">First</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                </li>
+                {% endif %}
+                
+                <li class="page-item active">
+                    <span class="page-link">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                </li>
+                
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Bulk Actions Bar -->
+<div class="position-fixed bottom-0 start-50 translate-middle-x mb-4" id="bulkActions" style="display: none; z-index: 1000;">
+    <div class="dashboard-card shadow-lg px-4 py-3">
+        <div class="d-flex align-items-center gap-3">
+            <span class="fw-semibold">
+                <span id="selectedCount">0</span> selected
+            </span>
+            <div class="vr"></div>
+            <button class="btn btn-sm btn-outline-success" onclick="bulkAction('activate')">
+                <i class="bi bi-play me-1"></i> Activate
+            </button>
+            <button class="btn btn-sm btn-outline-warning" onclick="bulkAction('deactivate')">
+                <i class="bi bi-pause me-1"></i> Deactivate
+            </button>
+            <button class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-pencil me-1"></i> Edit
+            </button>
+            <button class="btn btn-sm btn-link text-muted" onclick="clearSelection()">
+                Clear
+            </button>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- Empty State -->
+<div class="dashboard-card text-center py-5">
+    <i class="bi bi-box-seam display-1 text-muted mb-4"></i>
+    <h3>No Products Added</h3>
+    <p class="text-muted mb-4">Start by adding products to your brand catalog</p>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProductModal">
+        <i class="bi bi-plus-lg me-2"></i> Add Your First Product
+    </button>
+</div>
+{% endif %}
+
+<!-- Add Product Modal -->
+<div class="modal fade" id="addProductModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Products to Catalog</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Note:</strong> This feature will allow you to browse and select products from the main product catalog to add to your brand.
+                </div>
+                
+                <div class="text-center py-4">
+                    <i class="bi bi-gear display-1 text-muted mb-3"></i>
+                    <h5>Coming Soon</h5>
+                    <p class="text-muted">Product selection interface is under development.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Product selection
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.product-select');
+    const selectAll = document.getElementById('selectAll');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBulkActions);
+    });
+    
+    selectAll.addEventListener('change', function() {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateBulkActions();
+    });
+    
+    function updateBulkActions() {
+        const selected = document.querySelectorAll('.product-select:checked');
+        const count = selected.length;
+        
+        selectedCount.textContent = count;
+        bulkActions.style.display = count > 0 ? 'block' : 'none';
+        
+        // Update select all checkbox
+        selectAll.checked = checkboxes.length > 0 && count === checkboxes.length;
+        selectAll.indeterminate = count > 0 && count < checkboxes.length;
+    }
+});
+
+function clearSelection() {
+    document.querySelectorAll('.product-select:checked').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.getElementById('selectAll').checked = false;
+    document.getElementById('selectAll').indeterminate = false;
+    document.getElementById('bulkActions').style.display = 'none';
+    document.getElementById('selectedCount').textContent = '0';
+}
+
+function bulkAction(action) {
+    const selected = document.querySelectorAll('.product-select:checked');
+    if (selected.length === 0) return;
+    
+    const productIds = Array.from(selected).map(cb => cb.value);
+    
+    // Here you would implement bulk actions
+    console.log(`Bulk ${action} for products:`, productIds);
+    
+    // For now, just show an alert
+    alert(`Bulk ${action} functionality is under development.`);
+}
+
+// Search functionality
+document.getElementById('searchProducts').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const rows = document.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const productName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+        const isVisible = productName.includes(searchTerm);
+        row.style.display = isVisible ? '' : 'none';
+    });
+});
+
+// Filter functionality
+document.getElementById('filterStatus').addEventListener('change', function() {
+    const filterValue = this.value;
+    const rows = document.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const statusBadge = row.querySelector('td:nth-child(6) .badge');
+        const isActive = statusBadge && statusBadge.textContent.trim() === 'Active';
+        
+        let isVisible = true;
+        if (filterValue === 'active') {
+            isVisible = isActive;
+        } else if (filterValue === 'inactive') {
+            isVisible = !isActive;
+        }
+        
+        row.style.display = isVisible ? '' : 'none';
+    });
+});
+</script>
+{% endblock %}

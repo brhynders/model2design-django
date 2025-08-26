@@ -8,7 +8,7 @@
 <div class="container pt-5 pb-2">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'core:home' %}">Home</a></li>
             <li class="breadcrumb-item"><a href="{% url 'products:list' %}">Products</a></li>
             {% if product.categories.first %}
                 <li class="breadcrumb-item"><a href="{% url 'products:category' product.categories.first.slug %}">{{ product.categories.first.name }}</a></li>

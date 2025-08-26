@@ -1,0 +1,281 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Partner With Us{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="bg-dark pt-5 pb-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="display-4 fw-bold text-white mb-4">Partner With Us</h1>
+                <p class="lead text-white-50 mb-5">
+                    Create your own branded store and offer custom products to your customers. 
+                    Join our network of successful partners and start selling today.
+                </p>
+                <div class="row justify-content-center mt-4">
+                    <div class="col-lg-10">
+                        <div class="row g-4">
+                            <div class="col-sm-6">
+                                <div class="d-flex align-items-center justify-content-center justify-content-sm-start text-white">
+                                    <i class="bi bi-check-circle-fill text-success me-3" style="font-size: 1.5rem;"></i>
+                                    <div class="text-start">
+                                        <strong>No Inventory</strong><br>
+                                        <small class="text-white-50">We handle production & shipping</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="d-flex align-items-center justify-content-center justify-content-sm-start text-white">
+                                    <i class="bi bi-check-circle-fill text-success me-3" style="font-size: 1.5rem;"></i>
+                                    <div class="text-start">
+                                        <strong>Your Brand</strong><br>
+                                        <small class="text-white-50">Custom domain & branding</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="d-flex align-items-center justify-content-center justify-content-sm-start text-white">
+                                    <i class="bi bi-check-circle-fill text-success me-3" style="font-size: 1.5rem;"></i>
+                                    <div class="text-start">
+                                        <strong>Easy Setup</strong><br>
+                                        <small class="text-white-50">Launch in minutes, not months</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-sm-6">
+                                <div class="d-flex align-items-center justify-content-center justify-content-sm-start text-white">
+                                    <i class="bi bi-check-circle-fill text-success me-3" style="font-size: 1.5rem;"></i>
+                                    <div class="text-start">
+                                        <strong>Full Support</strong><br>
+                                        <small class="text-white-50">Dedicated partner success team</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Form Section -->
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-{% if message.tags == 'success' %}check-circle{% else %}exclamation-circle{% endif %} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <div class="card border-0 shadow-lg">
+                <div class="card-body p-5">
+                    <h2 class="h3 fw-bold mb-4">Request Your Brand Store</h2>
+                    <p class="text-muted mb-4">
+                        Fill out the form below and our partnership team will contact you to discuss how we can help grow your business.
+                    </p>
+                    
+                    <form method="POST" action="{% url 'brands:partner' %}" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        <div class="row g-3">
+                            <!-- Business Information -->
+                            <div class="col-12">
+                                <h5 class="fw-bold mb-3">Business Information</h5>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.business_name.id_for_label }}" class="form-label">{{ form.business_name.label }}</label>
+                                {{ form.business_name }}
+                                <div class="invalid-feedback">
+                                    Please enter your business name.
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.website.id_for_label }}" class="form-label">{{ form.website.label }}</label>
+                                {{ form.website }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.business_type.id_for_label }}" class="form-label">{{ form.business_type.label }}</label>
+                                {{ form.business_type }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.expected_volume.id_for_label }}" class="form-label">{{ form.expected_volume.label }}</label>
+                                {{ form.expected_volume }}
+                            </div>
+                            
+                            <!-- Contact Information -->
+                            <div class="col-12 mt-4">
+                                <h5 class="fw-bold mb-3">Contact Information</h5>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.contact_name.id_for_label }}" class="form-label">{{ form.contact_name.label }}</label>
+                                {{ form.contact_name }}
+                                <div class="invalid-feedback">
+                                    Please enter your name.
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
+                                {{ form.email }}
+                                <div class="invalid-feedback">
+                                    Please enter a valid email address.
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.phone.id_for_label }}" class="form-label">{{ form.phone.label }}</label>
+                                {{ form.phone }}
+                                <div class="invalid-feedback">
+                                    Please enter your phone number.
+                                </div>
+                            </div>
+                            
+                            <!-- Social Media -->
+                            <div class="col-12 mt-4">
+                                <h5 class="fw-bold mb-3">Social Media (Optional)</h5>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.facebook.id_for_label }}" class="form-label">
+                                    <i class="bi bi-facebook me-2"></i>{{ form.facebook.label }}
+                                </label>
+                                {{ form.facebook }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.instagram.id_for_label }}" class="form-label">
+                                    <i class="bi bi-instagram me-2"></i>{{ form.instagram.label }}
+                                </label>
+                                {{ form.instagram }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.twitter.id_for_label }}" class="form-label">
+                                    <i class="bi bi-twitter me-2"></i>{{ form.twitter.label }}
+                                </label>
+                                {{ form.twitter }}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.linkedin.id_for_label }}" class="form-label">
+                                    <i class="bi bi-linkedin me-2"></i>{{ form.linkedin.label }}
+                                </label>
+                                {{ form.linkedin }}
+                            </div>
+                            
+                            <!-- Additional Information -->
+                            <div class="col-12 mt-4">
+                                <label for="{{ form.message.id_for_label }}" class="form-label">{{ form.message.label }}</label>
+                                {{ form.message }}
+                            </div>
+                            
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg px-5">
+                                    <i class="bi bi-send me-2"></i>Submit Request
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Benefits Section -->
+<div class="bg-light py-5">
+    <div class="container">
+        <div class="row">
+            <div class="col-12 text-center mb-5">
+                <h2 class="h3 fw-bold">Why Partner With Us?</h2>
+                <p class="text-muted">Everything you need to run a successful custom merchandise business</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; background-color: rgba(13, 110, 253, 0.1);">
+                        <i class="bi bi-palette" style="font-size: 2rem; color: #0d6efd;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Custom 3D Designer</h5>
+                    <p class="text-muted small">
+                        Let your customers design products in real-time with our advanced 3D customization tool
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; background-color: rgba(25, 135, 84, 0.1);">
+                        <i class="bi bi-graph-up" style="font-size: 2rem; color: #198754;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Competitive Commission</h5>
+                    <p class="text-muted small">
+                        Bulk pricing tiers and wholesale rates to maximize your profit margins
+                    </p>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="text-center">
+                    <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px; background-color: rgba(13, 202, 240, 0.1);">
+                        <i class="bi bi-credit-card-2-front" style="font-size: 2rem; color: #0dcaf0;"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Automated Payments</h5>
+                    <p class="text-muted small">
+                        Seamless payment processing with automatic commission payouts on every sale
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+}
+
+.card {
+    border-radius: 1rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 2rem;
+}
+</style>
+
+<script>
+// Bootstrap form validation
+(function () {
+    'use strict'
+    
+    var forms = document.querySelectorAll('.needs-validation')
+    
+    Array.prototype.slice.call(forms).forEach(function (form) {
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault()
+                event.stopPropagation()
+            }
+            
+            form.classList.add('was-validated')
+        }, false)
+    })
+})()
+</script>
+{% endblock %}

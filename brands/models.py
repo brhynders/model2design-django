@@ -272,3 +272,70 @@ class BrandEarnings(models.Model):
         if not self.commission_amount:
             self.commission_amount = (self.amount * self.commission_rate) / 100
         super().save(*args, **kwargs)
+
+
+class PartnerRequest(models.Model):
+    """Partner/Brand creation requests"""
+    BUSINESS_TYPE_CHOICES = [
+        ('sports_team', 'Sports Team/League'),
+        ('school', 'School/University'),
+        ('corporate', 'Corporate/Company'),
+        ('nonprofit', 'Non-Profit Organization'),
+        ('retail', 'Retail/E-commerce'),
+        ('other', 'Other'),
+    ]
+    
+    VOLUME_CHOICES = [
+        ('1-50', '1-50 items'),
+        ('50-100', '50-100 items'),
+        ('100-500', '100-500 items'),
+        ('500-1000', '500-1000 items'),
+        ('1000+', '1000+ items'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('contacted', 'Contacted'),
+    ]
+    
+    # Business Information
+    business_name = models.CharField(max_length=200)
+    website = models.URLField(blank=True)
+    business_type = models.CharField(max_length=50, choices=BUSINESS_TYPE_CHOICES, blank=True)
+    expected_volume = models.CharField(max_length=20, choices=VOLUME_CHOICES, blank=True)
+    
+    # Contact Information
+    contact_name = models.CharField(max_length=200)
+    email = models.EmailField()
+    phone = models.CharField(max_length=20)
+    
+    # Social Media
+    facebook = models.URLField(blank=True)
+    instagram = models.URLField(blank=True)
+    twitter = models.URLField(blank=True)
+    linkedin = models.URLField(blank=True)
+    
+    # Additional Information
+    message = models.TextField(blank=True)
+    
+    # Status tracking
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    admin_notes = models.TextField(blank=True, help_text="Internal notes about this request")
+    
+    # If approved, link to created brand
+    approved_brand = models.ForeignKey(Brand, on_delete=models.SET_NULL, null=True, blank=True, related_name='partner_request')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_partner_requests')
+    
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Partner Request"
+        verbose_name_plural = "Partner Requests"
+    
+    def __str__(self):
+        return f"{self.business_name} - {self.status}"

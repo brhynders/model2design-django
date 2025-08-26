@@ -11,10 +11,13 @@ from django.utils.text import slugify
 
 from .models import (
     Brand, BrandOwner, BrandTemplate, BrandImage, 
-    BrandImageCategory, BrandEarnings
+    BrandImageCategory, BrandEarnings, PartnerRequest
 )
 from .mixins import BrandFilterMixin
+from .forms import PartnerRequestForm
 from products.models import BrandProduct
+from django.core.mail import send_mail
+from django.conf import settings
 
 
 class BrandOwnerRequiredMixin(LoginRequiredMixin):
@@ -454,3 +457,79 @@ def switch_brand(request, brand_slug):
     # Redirect to dashboard with success message
     messages.success(request, f"Switched to {brand.name}")
     return redirect('brands:dashboard')
+
+
+def partner_with_us(request):
+    """Partner/Brand request page"""
+    if request.method == 'POST':
+        form = PartnerRequestForm(request.POST)
+        if form.is_valid():
+            partner_request = form.save()
+            
+            # Send notification email to admins
+            try:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                admin_emails = User.objects.filter(is_staff=True).values_list('email', flat=True)
+                
+                if admin_emails:
+                    subject = f"New Partner Request: {partner_request.business_name}"
+                    message = f"""A new partner request has been submitted.
+
+Business Name: {partner_request.business_name}
+Contact Name: {partner_request.contact_name}
+Email: {partner_request.email}
+Phone: {partner_request.phone}
+Website: {partner_request.website}
+Business Type: {partner_request.get_business_type_display() if partner_request.business_type else 'Not specified'}
+Expected Volume: {partner_request.get_expected_volume_display() if partner_request.expected_volume else 'Not specified'}
+Message: {partner_request.message}
+
+View in admin panel: {request.build_absolute_uri('/admin/brands/partnerrequest/')}{partner_request.id}/"""
+                    
+                    send_mail(
+                        subject,
+                        message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        admin_emails,
+                        fail_silently=True,
+                    )
+            except Exception as e:
+                # Log the error but don't fail the request
+                pass
+            
+            # Send confirmation email to requester
+            try:
+                subject = "Thank you for your partnership request"
+                message = f"""Dear {partner_request.contact_name},
+
+Thank you for your interest in partnering with us.
+
+We have received your request and our partnership team will review it shortly. You can expect to hear back from us within 1-2 business days.
+
+If you have any urgent questions, please don't hesitate to contact us.
+
+Best regards,
+The Team"""
+                
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [partner_request.email],
+                    fail_silently=True,
+                )
+            except Exception as e:
+                # Log the error but don't fail the request
+                pass
+            
+            messages.success(request, "Thank you for your interest! We've received your partnership request and will get back to you within 1-2 business days.")
+            return redirect('brands:partner')
+    else:
+        form = PartnerRequestForm()
+    
+    context = {
+        'form': form,
+    }
+    
+    return render(request, 'brands/partner.html', context)

@@ -37,11 +37,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'core',
     'accounts',
     'products',
     'brands',
     'cart',
     'support',
+    'designer',
 ]
 
 MIDDLEWARE = [
@@ -153,7 +155,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # Static files
 STATICFILES_DIRS = [
-    BASE_DIR / 'static',
+    BASE_DIR / 'core' / 'static',
 ]
 
 # Site configuration

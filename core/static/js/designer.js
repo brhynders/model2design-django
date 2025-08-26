@@ -582,8 +582,9 @@ function initThreeJS() {
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1;
 
-  // Add to DOM
+  // Add to DOM - clear existing canvases first
   const container = document.getElementById("canvas-container");
+  container.innerHTML = ''; // Clear any existing canvases
   container.appendChild(renderer.domElement);
 
   // Create PMREM generator for environment maps
@@ -704,7 +705,7 @@ function onCanvasRightClick(event) {
  */
 function loadEnvironmentMap() {
   rgbeLoader.load(
-    "/assets/neutral.hdr",
+    "/static/neutral.hdr",
     function (texture) {
       texture.mapping = THREE.EquirectangularReflectionMapping;
 
@@ -748,7 +749,7 @@ function loadProduct(product) {
 
   // Load the 3D model - fix the path
   const modelPath = product.modelLink.startsWith("/models/")
-    ? product.modelLink.replace("/models/", "/assets/models/")
+    ? product.modelLink.replace("/models/", "/static/models/")
     : product.modelLink;
 
   gltfLoader.load(

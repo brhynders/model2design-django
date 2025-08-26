@@ -12,7 +12,7 @@
         <!-- Breadcrumbs -->
         <nav aria-label="breadcrumb" class="mb-4 text-center">
             <ol class="breadcrumb bg-transparent p-0 mb-0 justify-content-center">
-                <li class="breadcrumb-item"><a href="{% url 'home' %}" class="text-white-50 text-decoration-none">Home</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'core:home' %}" class="text-white-50 text-decoration-none">Home</a></li>
                 {% if selected_category %}
                     <li class="breadcrumb-item"><a href="{% url 'products:list' %}" class="text-white-50 text-decoration-none">Products</a></li>
                     <li class="breadcrumb-item text-white active" aria-current="page">{{ selected_category }}</li>

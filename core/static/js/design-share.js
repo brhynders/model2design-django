@@ -1,5 +1,3 @@
-/* Obfuscated Designer JavaScript - Thu Aug 21 08:16:21 PM EDT 2025 */
-
 // Design Share Page JavaScript
 // This file contains the 3D viewer and interactive functionality for the design share page
 
@@ -235,10 +233,10 @@ function initDesignViewer() {
 
 // Load environment map for proper lighting and reflections
 function loadEnvironmentMap(callback) {
-    console.log('🌅 Loading HDR environment map: /assets/neutral.hdr');
+    console.log('🌅 Loading HDR environment map: /static/neutral.hdr');
     
     rgbeLoader.load(
-        '/assets/neutral.hdr',
+        '/static/neutral.hdr',
         function(texture) {
             texture.mapping = THREE.EquirectangularReflectionMapping;
             
@@ -323,7 +321,7 @@ async function loadProductModel(product) {
     
     // Adjust model path (same logic as designer)
     const modelPath = product.modelLink.startsWith('/models/') ? 
-        product.modelLink.replace('/models/', '/assets/models/') : 
+        product.modelLink.replace('/models/', '/static/models/') : 
         product.modelLink;
     
     // Load GLTF model

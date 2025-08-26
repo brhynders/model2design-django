@@ -1,8 +1,9 @@
 from django.contrib import admin
 from django.utils.html import format_html
+from django.utils import timezone
 from .models import (
     Brand, BrandOwner, BrandImage, BrandImageCategory, 
-    BrandTemplate, BrandEarnings
+    BrandTemplate, BrandEarnings, PartnerRequest
 )
 from products.models import BrandProduct
 
@@ -176,3 +177,51 @@ class BrandEarningsAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         })
     )
+
+
+@admin.register(PartnerRequest)
+class PartnerRequestAdmin(admin.ModelAdmin):
+    list_display = ['business_name', 'contact_name', 'email', 'status', 'created_at']
+    list_filter = ['status', 'business_type', 'expected_volume', 'created_at']
+    search_fields = ['business_name', 'contact_name', 'email', 'phone']
+    readonly_fields = ['created_at', 'updated_at']
+    date_hierarchy = 'created_at'
+    
+    fieldsets = (
+        ('Business Information', {
+            'fields': ('business_name', 'website', 'business_type', 'expected_volume')
+        }),
+        ('Contact Information', {
+            'fields': ('contact_name', 'email', 'phone')
+        }),
+        ('Social Media', {
+            'fields': ('facebook', 'instagram', 'twitter', 'linkedin'),
+            'classes': ('collapse',)
+        }),
+        ('Message', {
+            'fields': ('message',)
+        }),
+        ('Status & Admin', {
+            'fields': ('status', 'admin_notes', 'approved_brand', 'reviewed_by', 'reviewed_at')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+    
+    def get_readonly_fields(self, request, obj=None):
+        # Make all fields readonly except status and admin fields
+        if obj:
+            return ['business_name', 'website', 'business_type', 'expected_volume',
+                   'contact_name', 'email', 'phone', 'facebook', 'instagram', 
+                   'twitter', 'linkedin', 'message', 'created_at', 'updated_at']
+        return ['created_at', 'updated_at']
+    
+    def save_model(self, request, obj, form, change):
+        # Auto-set reviewed_by and reviewed_at when status changes
+        if change and 'status' in form.changed_data:
+            if obj.status != 'pending':
+                obj.reviewed_by = request.user
+                obj.reviewed_at = timezone.now()
+        super().save_model(request, obj, form, change)

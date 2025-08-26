@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ design.name }} - Shared Design - {{ brand.name }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <!-- Design Preview Section -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body p-0">
+                    <!-- 3D Design Viewer -->
+                    <div class="position-relative">
+                        <div id="three-container" style="height: 500px; background-color: #f8f9fa;">
+                            <canvas id="share-three-canvas" style="width: 100%; height: 100%; display: block;"></canvas>
+                            
+                            <!-- Loading overlay -->
+                            <div id="viewer-loading" class="position-absolute top-50 start-50 translate-middle text-center">
+                                <div class="spinner-border text-primary mb-3" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <div class="text-muted">Loading 3D design...</div>
+                            </div>
+                            
+                            <!-- View control buttons -->
+                            <div class="position-absolute top-0 end-0 m-3">
+                                <div class="btn-group-vertical" role="group">
+                                    <button type="button" class="btn btn-sm btn-light" id="view-front" title="Front View">
+                                        <i class="bi bi-arrow-up"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-light" id="view-back" title="Back View">
+                                        <i class="bi bi-arrow-down"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-light" id="view-left" title="Left View">
+                                        <i class="bi bi-arrow-left"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-light" id="view-right" title="Right View">
+                                        <i class="bi bi-arrow-right"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-light" id="view-reset" title="Reset View">
+                                        <i class="bi bi-house"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Design Info Section -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h4 class="mb-0">{{ design.name }}</h4>
+                </div>
+                <div class="card-body">
+                    <p><strong>Designer:</strong> {{ designer.first_name }} {{ designer.last_name }}</p>
+                    <p><strong>Brand:</strong> {{ brand.name }}</p>
+                    {% if product_info %}
+                        <p><strong>Product:</strong> {{ product_info.name }}</p>
+                    {% endif %}
+                    <p><strong>Created:</strong> {{ design.created_at|date:"M d, Y" }}</p>
+                    
+                    <hr>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'designer:designer' %}?copy={{ design.id }}" class="btn btn-primary">
+                            <i class="bi bi-files me-2"></i>Copy This Design
+                        </a>
+                        
+                        {% if current_user.is_authenticated %}
+                            <button class="btn btn-outline-secondary" onclick="addToCart()">
+                                <i class="bi bi-cart-plus me-2"></i>Add to Cart
+                            </button>
+                        {% else %}
+                            <a href="{% url 'accounts:login' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-person me-2"></i>Login to Order
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript for 3D viewer -->
+<script>
+// Design data from Django
+window.sharedDesignData = {
+    designData: {{ design_data|safe }},
+    productInfo: {{ product_info|safe }},
+    currentBrand: {
+        id: {{ brand.id }},
+        name: '{{ brand.name }}',
+        primaryColor: '{{ brand.primary_color }}'
+    }
+};
+
+function addToCart() {
+    // TODO: Implement add to cart for shared designs
+    alert('Add to cart functionality needs to be implemented');
+}
+</script>
+
+<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/three.min.js' %}"></script>
+<script src="{% static 'js/OrbitControls.js' %}"></script>
+<script src="{% static 'js/GLTFLoader.js' %}"></script>
+<script src="{% static 'js/RGBELoader.js' %}"></script>
+<script src="{% static 'js/design-share.js' %}"></script>
+{% endblock %}

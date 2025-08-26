@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Select Template - {{ current_brand.name }}{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Select a Template</h1>
+        <a href="{% url 'designer:designer' %}{% if product_id %}?product={{ product_id }}{% endif %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Start From Scratch
+        </a>
+    </div>
+
+    {% if templates %}
+        <div class="row">
+            {% for template in templates %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card template-card">
+                    {% if template.thumbnail_front %}
+                        <img src="{{ template.thumbnail_front }}" class="card-img-top" alt="{{ template.name }}" style="height: 200px; object-fit: cover;">
+                    {% else %}
+                        <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                            <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="card-body">
+                        <h5 class="card-title">{{ template.name }}</h5>
+                        {% if template.description %}
+                            <p class="card-text">{{ template.description|truncatewords:20 }}</p>
+                        {% endif %}
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">Product: {{ template.product }}</small>
+                            <a href="{% url 'designer:designer' %}?template={{ template.id }}" class="btn btn-primary">
+                                <i class="bi bi-play me-1"></i>Use Template
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-collection display-1 text-muted"></i>
+            <h3 class="mt-3">No Templates Available</h3>
+            <p class="text-muted">No templates have been created for this brand yet.</p>
+            <a href="{% url 'designer:designer' %}{% if product_id %}?product={{ product_id }}{% endif %}" class="btn btn-primary btn-lg">
+                <i class="bi bi-plus-circle me-2"></i>Create Your Own Design
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.template-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.template-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}

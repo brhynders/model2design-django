@@ -27,6 +27,9 @@ urlpatterns = [
     # Brand earnings
     path('earnings/', views.BrandEarningsListView.as_view(), name='earnings'),
     
+    # Partner with us
+    path('partner/', views.partner_with_us, name='partner'),
+    
     # API endpoints for AJAX/JavaScript
     path('api/templates/', views.api_brand_templates, name='api_templates'),
     path('api/public-templates/', views.api_public_templates, name='api_public_templates'),

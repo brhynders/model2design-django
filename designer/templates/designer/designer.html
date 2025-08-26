@@ -1,0 +1,394 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }} - {{ current_brand.name }}</title>
+    <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/bootstrap-icons.min.css' %}" rel="stylesheet">
+    <link href="{% static 'css/theme.css' %}" rel="stylesheet">
+    <link href="{% static 'css/designer.css' %}" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
+    
+    <!-- Google Fonts -->
+    {% if fonts_list %}
+    <link href="https://fonts.googleapis.com/css2?{% for font in fonts_list %}family={{ font|urlencode }}:wght@400;700{% if not forloop.last %}&{% endif %}{% endfor %}&display=swap" rel="stylesheet">
+    {% endif %}
+    
+    <!-- Preconnect for faster loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body>
+
+    <div id="designer-container">
+        <!-- Loading Overlay -->
+        <div id="loading-overlay">
+            <div class="loading-content">
+                <div class="spinner-border text-light mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading 3D Designer...</p>
+            </div>
+        </div>
+
+        <!-- Fixed Brand Logo -->
+        <div class="fixed-brand">
+            <img src="{% if current_brand.logo_url %}{{ current_brand.logo_url }}{% else %}{% static 'logo-dark.png' %}{% endif %}"
+                alt="{% if current_brand %}{{ current_brand.name }}{% else %}Designer{% endif %}">
+            <h1>3D Designer</h1>
+        </div>
+
+        <!-- Left Toolbar -->
+        <div class="left-toolbar">
+            <!-- View Controls -->
+            <div class="toolbar-group">
+                <button class="toolbar-btn" onclick="rotateView('front')" title="Front View">
+                    <i class="bi bi-square"></i>
+                </button>
+                <button class="toolbar-btn" onclick="rotateView('back')" title="Back View">
+                    <i class="bi bi-square-fill"></i>
+                </button>
+                <button class="toolbar-btn" onclick="rotateView('left')" title="Left View">
+                    <i class="bi bi-caret-left-square"></i>
+                </button>
+                <button class="toolbar-btn" onclick="rotateView('right')" title="Right View">
+                    <i class="bi bi-caret-right-square"></i>
+                </button>
+            </div>
+
+            <div class="toolbar-divider"></div>
+
+            <!-- Rotation Controls -->
+            <div class="toolbar-group">
+                <button class="toolbar-btn" onclick="rotateCamera('left')" title="Rotate Left">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+                <button class="toolbar-btn" onclick="rotateCamera('right')" title="Rotate Right">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+            </div>
+
+            <div class="toolbar-divider"></div>
+
+            <!-- Zoom Controls -->
+            <div class="toolbar-group">
+                <button class="toolbar-btn" onclick="zoomCamera('in')" title="Zoom In">
+                    <i class="bi bi-zoom-in"></i>
+                </button>
+                <button class="toolbar-btn" onclick="zoomCamera('out')" title="Zoom Out">
+                    <i class="bi bi-zoom-out"></i>
+                </button>
+            </div>
+
+            <!-- Tutorials -->
+            <div class="toolbar-group">
+                <button class="toolbar-btn" onclick="openTutorials()" title="Tutorials">
+                    <i class="bi bi-question-circle"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div id="main-content">
+            <!-- 3D Viewer -->
+            <div id="viewer-container">
+                <div id="canvas-container"></div>
+
+                <!-- Background Selector (only for brands with backgrounds) -->
+                {% if current_brand and current_brand.id %}
+                    <div class="viewer-background-selector">
+                        <div class="dropdown">
+                            <button class="background-selector-btn dropdown-toggle" type="button" id="backgroundDropdown"
+                                data-bs-toggle="dropdown" aria-expanded="false" title="Change Background">
+                                <i class="bi bi-image me-2"></i>
+                                <span>Background</span>
+                            </button>
+                            <ul class="dropdown-menu background-dropdown dropdown-menu-end"
+                                aria-labelledby="backgroundDropdown">
+                                <li>
+                                    <h6 class="dropdown-header">Background</h6>
+                                </li>
+                                <li><a class="dropdown-item" href="#" onclick="setBackground(null)">
+                                        <div class="background-option">
+                                            <div class="background-thumbnail bg-light d-flex align-items-center justify-content-center">
+                                                <i class="bi bi-slash-circle text-muted"></i>
+                                            </div>
+                                            <span>None</span>
+                                        </div>
+                                    </a></li>
+                                <!-- Additional background options would be populated here -->
+                            </ul>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Right Panel -->
+            <div id="right-panel">
+                <!-- Sidebar Header -->
+                <div class="sidebar-header">
+                    <div class="product-info">
+                        <div class="product-name">{{ current_product.name }}</div>
+                        <div class="design-name" id="design-name-display">{% if design_data %}{{ design_data.name }}{% else %}Untitled Design{% endif %}</div>
+                    </div>
+                    <div class="header-icons">
+                        <button class="header-icon-btn" onclick="editDesignName()" title="Edit Design Name">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="header-icon-btn" id="account-popover-btn" data-bs-toggle="popover"
+                            data-bs-placement="bottom" data-bs-html="true" data-bs-trigger="click" title="Account">
+                            <i class="bi bi-person"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Layer Tabs -->
+                <div class="layer-tabs-section">
+                    <div class="layer-tabs" id="layer-tabs">
+                        <!-- Layer tabs will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Design Content -->
+                <div class="design-content">
+                    <!-- Color Section -->
+                    <div class="design-section">
+                        <h6 class="design-section-label">Color</h6>
+                        <div class="color-controls">
+                            <div class="color-input-group">
+                                <div class="color-picker-wrapper">
+                                    <input type="color" class="form-control form-control-color" id="color-picker"
+                                        oninput="setCurrentLayerColor(this.value)">
+                                </div>
+                                <div class="hex-input-wrapper">
+                                    <span class="hex-prefix">#</span>
+                                    <input type="text" class="form-control form-control-sm hex-input" id="hex-input"
+                                        placeholder="FFFFFF" maxlength="6"
+                                        oninput="setCurrentLayerColorFromHex(this.value)">
+                                </div>
+                                <button class="copy-color-btn" id="copy-color-btn" type="button"
+                                    data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
+                                    title="Copy Color to Other Layers">
+                                    <i class="bi bi-palette"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Material Section -->
+                    <div class="design-section">
+                        <h6 class="design-section-label">Material</h6>
+                        <div class="material-grid" id="material-options">
+                            <!-- Material options will be populated here -->
+                        </div>
+                    </div>
+
+                    <!-- Designs Section -->
+                    <div class="design-section">
+                        <div class="design-section-header">
+                            <h6 class="design-section-label">Designs</h6>
+                            <div class="dropdown">
+                                <button class="btn btn-primary btn-sm dropdown-toggle" type="button" id="addDesignBtn"
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                    Add Design
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="addDesignBtn">
+                                    <li>
+                                        <h6 class="dropdown-header">Add Design</h6>
+                                    </li>
+                                    <li><a class="dropdown-item" href="#" onclick="addImageDecal()"
+                                            data-bs-dismiss="dropdown">
+                                            <i class="bi bi-image me-2"></i>Image
+                                        </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="closeDropdownAndAddText(event)"
+                                            data-bs-dismiss="dropdown">
+                                            <i class="bi bi-fonts me-2"></i>Text
+                                        </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="closeDropdownAndAddFade(event)"
+                                            data-bs-dismiss="dropdown">
+                                            <i class="bi bi-circle-half me-2"></i>Fade
+                                        </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="design-elements-list" id="decals-list">
+                            <!-- Design elements will be populated here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cart Section -->
+                <div class="cart-section">
+                    <h4 class="text-center mb-1">Design Actions</h4>
+                    <p class="text-muted mb-3 text-center">Save and order your design</p>
+
+                    <!-- Icon Action Buttons Grid -->
+                    <div class="action-buttons-grid">
+                        {% if not create_template %}
+                            <!-- Save Design (only show for regular designs) -->
+                            <button class="action-btn" onclick="saveDesign()">
+                                <i class="bi bi-save"></i>
+                                <span id="save-btn-text">Save</span>
+                            </button>
+
+                            <!-- Templates (only show for regular designs) -->
+                            <button class="action-btn" onclick="openTemplates()">
+                                <i class="bi bi-grid-3x3-gap"></i>
+                                <span>Templates</span>
+                            </button>
+                        {% endif %}
+
+                        <!-- Clear Design -->
+                        <button class="action-btn" onclick="confirmClearDesign()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            <span>Clear</span>
+                        </button>
+
+                        <!-- Exit Designer -->
+                        <button class="action-btn" onclick="confirmExitDesigner()">
+                            <i class="bi bi-box-arrow-left"></i>
+                            <span>Exit</span>
+                        </button>
+                    </div>
+
+                    <!-- Add to Cart Button Row -->
+                    <div class="mt-3">
+                        <button class="btn btn-primary w-100" onclick="openCartModal()" id="add-cart-btn">
+                            <i class="bi bi-cart-plus"></i> <span id="add-cart-text">Add to Cart</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Bank Modal -->
+    <div class="modal fade image-bank-modal" id="imageBankModal" tabindex="-1" aria-labelledby="imageBankModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <!-- Modal content will be generated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Design Modal -->
+    <div class="modal fade" id="saveDesignModal" tabindex="-1" aria-labelledby="saveDesignModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="saveDesignModalLabel">Save Design</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="design-name-input" class="form-label">Design Name</label>
+                        <input type="text" class="form-control" id="design-name-input" placeholder="Enter design name">
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="make-public">
+                        <label class="form-check-label" for="make-public">
+                            Make this design public
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="save-design-confirm">Save Design</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div class="modal fade" id="cartModal" tabindex="-1" aria-labelledby="cartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-cart">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="cartModalLabel">Select Sizes & Quantities</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body cart-modal-body">
+                    <!-- Cart content will be generated by JavaScript -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirm-add-to-cart">Add to Cart</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Data -->
+    <script>
+        // Pass PHP data to JavaScript (matching original PHP structure)
+        window.phpData = {
+            environment: '{% if debug %}development{% else %}production{% endif %}',
+            user: {% if user.is_authenticated %}{'name': '{{ user.first_name }} {{ user.last_name }}', 'email': '{{ user.email }}'}{% else %}null{% endif %},
+            isGuest: {{ is_guest|yesno:"true,false" }},
+            isBrandOwner: {{ is_brand_owner|yesno:"true,false" }},
+            userBrand: {% if user.is_authenticated and is_brand_owner %}{'id': {{ current_brand.id }}, 'name': '{{ current_brand.name }}'}{% else %}null{% endif %},
+            brand: {
+                id: {{ current_brand.id }},
+                name: '{{ current_brand.name }}',
+                primaryColor: '{{ current_brand.primary_color }}'
+            },
+            product: {{ current_product_json|safe }},
+            bumpmaps: {{ bumpmaps|safe }},
+            fonts: {{ fonts|safe }},
+            imageBank: {
+                categories: [],
+                initialImages: [],
+                loadedAt: {% now "U" %}
+            },
+            designData: {% if design_data %}{{ design_data|safe }}{% else %}null{% endif %},
+            createTemplate: {{ create_template|yesno:"true,false" }},
+            templateEditId: null,
+            brandBackgrounds: []
+        };
+        
+        // For backward compatibility
+        window.designerData = window.phpData;
+        
+        // Quick test: Hide loading overlay after 3 seconds as a test
+        setTimeout(function() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            console.log('3 second timeout - loading overlay element:', loadingOverlay);
+            if (loadingOverlay) {
+                loadingOverlay.style.display = 'none';
+                console.log('Loading overlay hidden via timeout');
+            }
+        }, 3000);
+        
+        // Fallback: Hide loading overlay after 10 seconds if it's still showing
+        setTimeout(function() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            if (loadingOverlay && window.getComputedStyle(loadingOverlay).display !== 'none') {
+                console.warn('Loading took too long, hiding overlay as fallback');
+                loadingOverlay.style.display = 'none';
+            }
+        }, 10000);
+        
+        // Debug: Check if jQuery is available
+        setTimeout(function() {
+            if (typeof $ === 'undefined') {
+                console.error('jQuery is not available - designer initialization will fail');
+            } else {
+                console.log('jQuery is available, designer should initialize');
+            }
+        }, 1000);
+    </script>
+
+    <!-- Scripts -->
+    <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{% static 'js/three.min.js' %}"></script>
+    <script src="{% static 'js/OrbitControls.js' %}"></script>
+    <script src="{% static 'js/GLTFLoader.js' %}"></script>
+    <script src="{% static 'js/RGBELoader.js' %}"></script>
+    <script src="{% static 'js/designer.js' %}"></script>
+</body>
+</html>

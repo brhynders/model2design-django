@@ -18,7 +18,6 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from . import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -27,7 +26,8 @@ urlpatterns = [
     path('brand/', include('brands.urls')),
     path('cart/', include('cart.urls')),
     path('support/', include('support.urls')),
-    path('', views.home, name='home'),
+    path('designer/', include('designer.urls')),
+    path('', include('core.urls')),
 ]
 
 if settings.DEBUG:

@@ -30,7 +30,7 @@
     <!-- Header Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top py-3">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="{% url 'home' %}">
+            <a class="navbar-brand fw-bold" href="{% url 'core:home' %}">
                 {% if current_brand.logo_url %}
                     <img src="{{ current_brand.logo_url }}" width="220" alt="{{ current_brand.name }}" />
                 {% else %}
@@ -45,7 +45,7 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav mx-auto gap-2 text-center">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'home' %}">Home</a>
+                        <a class="nav-link" href="{% url 'core:home' %}">Home</a>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="productsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -75,7 +75,7 @@
                         </ul>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#">Partner With Us</a>
+                        <a class="nav-link" href="{% url 'brands:partner' %}">Partner With Us</a>
                     </li>
                 </ul>
                 
@@ -173,7 +173,7 @@
                     <h5 class="text-dark mb-3">Quick Links</h5>
                     <ul class="list-unstyled">
                         <li class="mb-2">
-                            <a href="{% url 'home' %}" class="text-muted text-decoration-none hover-text-primary">
+                            <a href="{% url 'core:home' %}" class="text-muted text-decoration-none hover-text-primary">
                                 <i class="bi bi-chevron-right me-1"></i>Home
                             </a>
                         </li>

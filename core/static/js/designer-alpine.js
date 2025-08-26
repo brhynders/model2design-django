@@ -36,9 +36,6 @@ document.addEventListener("alpine:init", () => {
     product: null,
 
     // UI state
-    showImageBank: false,
-    showTemplates: false,
-    showCartModal: false,
 
     // Design data
     designName: "Untitled Design",
@@ -149,6 +146,58 @@ document.addEventListener("alpine:init", () => {
         this.layers[this.currentLayer].color = color.replace("#", "");
         this.renderLayer();
       }
+    },
+
+    copyColorToLayer(targetLayerId) {
+      const currentLayer = this.layers[this.currentLayer];
+      const targetLayer = this.layers[targetLayerId];
+      
+      // Check if target layer can change color (default to true if not specified)
+      if (currentLayer && targetLayer && targetLayer.settings?.canChangeColor !== false) {
+        targetLayer.color = currentLayer.color;
+        
+        // Update the mesh material color if layer is loaded
+        if (targetLayer.mesh && targetLayer.mesh.material) {
+          const color = new THREE.Color("#" + targetLayer.color);
+          targetLayer.mesh.material.color = color;
+          targetLayer.mesh.material.needsUpdate = true;
+        }
+        
+        debugLog(`Copied color #${currentLayer.color} to layer ${targetLayerId}`);
+        
+        // If we switch to the target layer, trigger a re-render
+        if (this.currentLayer === targetLayerId) {
+          this.renderLayer();
+        }
+      }
+    },
+
+    copyColorToAllLayers() {
+      const currentLayer = this.layers[this.currentLayer];
+      if (!currentLayer) return;
+      
+      const currentColor = currentLayer.color;
+      let copiedCount = 0;
+      
+      Object.keys(this.layers).forEach(layerId => {
+        if (layerId !== this.currentLayer) {
+          const layer = this.layers[layerId];
+          // Check if layer can change color (default to true if not specified)
+          if (layer.settings?.canChangeColor !== false) {
+            layer.color = currentColor;
+            copiedCount++;
+            
+            // Update the mesh material color if layer is loaded
+            if (layer.mesh && layer.mesh.material) {
+              const color = new THREE.Color("#" + currentColor);
+              layer.mesh.material.color = color;
+              layer.mesh.material.needsUpdate = true;
+            }
+          }
+        }
+      });
+      
+      debugLog(`Copied color #${currentColor} to ${copiedCount} layers`);
     },
 
     // Material management
@@ -285,8 +334,10 @@ document.addEventListener("alpine:init", () => {
 
     // Design management
     saveDesign() {
-      // Implementation for saving design
-      debugLog("Saving design:", this.designName);
+      // Open the Bootstrap save design modal
+      debugLog("Opening save design modal");
+      const modal = new bootstrap.Modal(document.getElementById('saveDesignModal'));
+      modal.show();
     },
 
     clearDesign() {
@@ -400,10 +451,11 @@ document.addEventListener("alpine:init", () => {
       raycaster = new THREE.Raycaster();
       mouse = new THREE.Vector2();
 
-      // Mouse events
-      renderer.domElement.addEventListener("click", (event) =>
-        this.onCanvasClick(event)
-      );
+      // Mouse events - use right-click for layer selection
+      renderer.domElement.addEventListener("contextmenu", (event) => {
+        event.preventDefault(); // Prevent context menu from appearing
+        this.onCanvasClick(event);
+      });
 
       // Handle window resize
       window.addEventListener("resize", () => this.onWindowResize());
@@ -881,38 +933,15 @@ document.addEventListener("alpine:init", () => {
       container.style.backgroundRepeat = 'no-repeat';
       debugLog('Background applied successfully');
     },
-  });
 
-  // UI Store for modals and interface state
-  Alpine.store("ui", {
-    showImageBank: false,
-    showTemplates: false,
-    showCartModal: false,
-
-    openImageBank() {
-      this.showImageBank = true;
-    },
-
-    closeImageBank() {
-      this.showImageBank = false;
-    },
-
-    openTemplates() {
-      this.showTemplates = true;
-    },
-
-    closeTemplates() {
-      this.showTemplates = false;
-    },
-
-    openCartModal() {
-      this.showCartModal = true;
-    },
-
-    closeCartModal() {
-      this.showCartModal = false;
+    // Design name management
+    saveDesignName() {
+      debugLog('Saving design name:', this.designName);
+      // TODO: Implement actual saving to backend if needed
+      debugLog('Design name updated successfully');
     },
   });
+
 });
 
 // Initialize when Alpine is ready
@@ -941,20 +970,26 @@ window.confirmExitDesigner = () => {
   }
 };
 window.editDesignName = () => {
-  const newName = prompt(
-    "Enter design name:",
-    Alpine.store("designer").designName
-  );
-  if (newName && newName.trim()) {
-    Alpine.store("designer").designName = newName.trim();
-  }
+  const modal = new bootstrap.Modal(document.getElementById('editDesignNameModal'));
+  modal.show();
+  // Focus the input after the modal opens
+  setTimeout(() => {
+    const input = document.getElementById('design-name-input');
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }, 100);
 };
 
 window.setCurrentLayerColor = (color) =>
   Alpine.store("designer").setLayerColor(color);
 window.setCurrentLayerColorFromHex = (hex) =>
   Alpine.store("designer").setLayerColor("#" + hex);
-window.addImageDecal = () => Alpine.store("ui").openImageBank();
+window.addImageDecal = () => {
+  const modal = new bootstrap.Modal(document.getElementById('imageBankModal'));
+  modal.show();
+};
 window.closeDropdownAndAddText = () =>
   Alpine.store("designer").addDecal("text", {
     text: "Sample Text",
@@ -963,8 +998,14 @@ window.closeDropdownAndAddText = () =>
   });
 window.closeDropdownAndAddFade = () =>
   Alpine.store("designer").addDecal("fade", {});
-window.openCartModal = () => Alpine.store("ui").openCartModal();
-window.openTemplates = () => Alpine.store("ui").openTemplates();
+window.openCartModal = () => {
+  const modal = new bootstrap.Modal(document.getElementById('cartModalNew'));
+  modal.show();
+};
+window.openTemplates = () => {
+  const modal = new bootstrap.Modal(document.getElementById('templatesModal'));
+  modal.show();
+};
 
 // Debug functions for console access
 window.debugDesigner = () => {

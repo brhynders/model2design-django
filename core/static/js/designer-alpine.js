@@ -151,20 +151,26 @@ document.addEventListener("alpine:init", () => {
     copyColorToLayer(targetLayerId) {
       const currentLayer = this.layers[this.currentLayer];
       const targetLayer = this.layers[targetLayerId];
-      
+
       // Check if target layer can change color (default to true if not specified)
-      if (currentLayer && targetLayer && targetLayer.settings?.canChangeColor !== false) {
+      if (
+        currentLayer &&
+        targetLayer &&
+        targetLayer.settings?.canChangeColor !== false
+      ) {
         targetLayer.color = currentLayer.color;
-        
+
         // Update the mesh material color if layer is loaded
         if (targetLayer.mesh && targetLayer.mesh.material) {
           const color = new THREE.Color("#" + targetLayer.color);
           targetLayer.mesh.material.color = color;
           targetLayer.mesh.material.needsUpdate = true;
         }
-        
-        debugLog(`Copied color #${currentLayer.color} to layer ${targetLayerId}`);
-        
+
+        debugLog(
+          `Copied color #${currentLayer.color} to layer ${targetLayerId}`
+        );
+
         // If we switch to the target layer, trigger a re-render
         if (this.currentLayer === targetLayerId) {
           this.renderLayer();
@@ -175,18 +181,18 @@ document.addEventListener("alpine:init", () => {
     copyColorToAllLayers() {
       const currentLayer = this.layers[this.currentLayer];
       if (!currentLayer) return;
-      
+
       const currentColor = currentLayer.color;
       let copiedCount = 0;
-      
-      Object.keys(this.layers).forEach(layerId => {
+
+      Object.keys(this.layers).forEach((layerId) => {
         if (layerId !== this.currentLayer) {
           const layer = this.layers[layerId];
           // Check if layer can change color (default to true if not specified)
           if (layer.settings?.canChangeColor !== false) {
             layer.color = currentColor;
             copiedCount++;
-            
+
             // Update the mesh material color if layer is loaded
             if (layer.mesh && layer.mesh.material) {
               const color = new THREE.Color("#" + currentColor);
@@ -196,7 +202,7 @@ document.addEventListener("alpine:init", () => {
           }
         }
       });
-      
+
       debugLog(`Copied color #${currentColor} to ${copiedCount} layers`);
     },
 
@@ -336,7 +342,9 @@ document.addEventListener("alpine:init", () => {
     saveDesign() {
       // Open the Bootstrap save design modal
       debugLog("Opening save design modal");
-      const modal = new bootstrap.Modal(document.getElementById('saveDesignModal'));
+      const modal = new bootstrap.Modal(
+        document.getElementById("saveDesignModal")
+      );
       modal.show();
     },
 
@@ -349,6 +357,20 @@ document.addEventListener("alpine:init", () => {
       this.selectedDecal = null;
       this.renderLayer();
       debugLog("Design cleared");
+    },
+
+    updateDesignName(newName) {
+      const trimmedName = newName ? newName.trim() : "";
+      if (trimmedName) {
+        this.designName = trimmedName;
+        debugLog("Design name updated to:", trimmedName);
+
+        // Update the design name display in the header
+        const designNameSpan = document.querySelector(".design-header h5");
+        if (designNameSpan) {
+          designNameSpan.textContent = trimmedName;
+        }
+      }
     },
 
     // Three.js integration
@@ -803,21 +825,21 @@ document.addEventListener("alpine:init", () => {
       const box = new THREE.Box3().setFromObject(model);
       const center = box.getCenter(new THREE.Vector3());
       const size = box.getSize(new THREE.Vector3());
-      
+
       // Get the max dimension considering aspect ratio (same as fitCameraToModel)
       const container = document.getElementById("canvas-container");
       const aspect = container.clientWidth / container.clientHeight;
-      
+
       // Calculate the dimension that matters based on aspect ratio
       const horizontalFOV =
         2 * Math.atan(Math.tan((camera.fov * Math.PI) / 360) * aspect);
       const verticalFOV = (camera.fov * Math.PI) / 180;
-      
+
       // Determine limiting dimension
       const horizontalDistance = size.x / (2 * Math.tan(horizontalFOV / 2));
       const verticalDistance = size.y / (2 * Math.tan(verticalFOV / 2));
       const depthDistance = size.z * 0.5;
-      
+
       // Use the largest required distance with a small margin
       const distance =
         Math.max(horizontalDistance, verticalDistance, depthDistance) * 1.5;
@@ -839,7 +861,7 @@ document.addEventListener("alpine:init", () => {
 
       controls.target.copy(center);
       controls.update();
-      
+
       // Set zoom limits based on model size (same as fitCameraToModel)
       controls.minDistance = distance * 0.5;
       controls.maxDistance = distance * 3;
@@ -899,49 +921,48 @@ document.addEventListener("alpine:init", () => {
 
     // Background management
     setBackground(backgroundId) {
-      debugLog('setBackground called with:', backgroundId);
-      const container = document.getElementById('canvas-container');
-      
+      debugLog("setBackground called with:", backgroundId);
+      const container = document.getElementById("canvas-container");
+
       if (!container) {
-        debugError('Canvas container not found!');
+        debugError("Canvas container not found!");
         return;
       }
-      
+
       if (backgroundId === null) {
-        debugLog('Removing background');
+        debugLog("Removing background");
         // Remove background
-        container.style.backgroundImage = '';
-        container.style.backgroundColor = '';
+        container.style.backgroundImage = "";
+        container.style.backgroundColor = "";
         return;
       }
-      
+
       // Find the background
       const backgrounds = window.phpData?.brandBackgrounds || [];
-      const background = backgrounds.find(bg => bg.id === backgroundId);
-      
+      const background = backgrounds.find((bg) => bg.id === backgroundId);
+
       if (!background) {
-        debugError('Background not found for ID:', backgroundId);
+        debugError("Background not found for ID:", backgroundId);
         return;
       }
-      
+
       // Set background image
       const imageUrl = background.image_url;
-      debugLog('Setting background image:', imageUrl);
+      debugLog("Setting background image:", imageUrl);
       container.style.backgroundImage = `url('${imageUrl}')`;
-      container.style.backgroundSize = 'cover';
-      container.style.backgroundPosition = 'center';
-      container.style.backgroundRepeat = 'no-repeat';
-      debugLog('Background applied successfully');
+      container.style.backgroundSize = "cover";
+      container.style.backgroundPosition = "center";
+      container.style.backgroundRepeat = "no-repeat";
+      debugLog("Background applied successfully");
     },
 
     // Design name management
     saveDesignName() {
-      debugLog('Saving design name:', this.designName);
+      debugLog("Saving design name:", this.designName);
       // TODO: Implement actual saving to backend if needed
-      debugLog('Design name updated successfully');
+      debugLog("Design name updated successfully");
     },
   });
-
 });
 
 // Initialize when Alpine is ready
@@ -949,77 +970,3 @@ document.addEventListener("alpine:initialized", () => {
   debugLog("Alpine Designer initialized");
   Alpine.store("designer").init();
 });
-
-// Global functions for compatibility with onclick handlers
-window.rotateView = (direction) =>
-  Alpine.store("designer").rotateView(direction);
-window.rotateCamera = (direction) =>
-  Alpine.store("designer").rotateCamera(direction);
-window.zoomCamera = (direction) =>
-  Alpine.store("designer").zoomCamera(direction);
-window.openTutorials = () => window.open("/tutorials", "_blank");
-window.saveDesign = () => Alpine.store("designer").saveDesign();
-window.confirmClearDesign = () => {
-  if (confirm("Are you sure you want to clear the design?")) {
-    Alpine.store("designer").clearDesign();
-  }
-};
-window.confirmExitDesigner = () => {
-  if (confirm("Are you sure you want to exit the designer?")) {
-    window.location.href = "/products/";
-  }
-};
-window.editDesignName = () => {
-  const modal = new bootstrap.Modal(document.getElementById('editDesignNameModal'));
-  modal.show();
-  // Focus the input after the modal opens
-  setTimeout(() => {
-    const input = document.getElementById('design-name-input');
-    if (input) {
-      input.focus();
-      input.select();
-    }
-  }, 100);
-};
-
-window.setCurrentLayerColor = (color) =>
-  Alpine.store("designer").setLayerColor(color);
-window.setCurrentLayerColorFromHex = (hex) =>
-  Alpine.store("designer").setLayerColor("#" + hex);
-window.addImageDecal = () => {
-  const modal = new bootstrap.Modal(document.getElementById('imageBankModal'));
-  modal.show();
-};
-window.closeDropdownAndAddText = () =>
-  Alpine.store("designer").addDecal("text", {
-    text: "Sample Text",
-    font: "Roboto",
-    color: "000000",
-  });
-window.closeDropdownAndAddFade = () =>
-  Alpine.store("designer").addDecal("fade", {});
-window.openCartModal = () => {
-  const modal = new bootstrap.Modal(document.getElementById('cartModalNew'));
-  modal.show();
-};
-window.openTemplates = () => {
-  const modal = new bootstrap.Modal(document.getElementById('templatesModal'));
-  modal.show();
-};
-
-// Debug functions for console access
-window.debugDesigner = () => {
-  console.log("Designer Store:", Alpine.store("designer"));
-  console.log("Loading States:", Alpine.store("designer").loadingStates);
-  console.log("Is Loading:", Alpine.store("designer").isLoading);
-  console.log("Current Layer:", Alpine.store("designer").currentLayer);
-  console.log("Layers:", Alpine.store("designer").layers);
-};
-window.hideLoading = () => Alpine.store("designer").hideLoading();
-window.testLoading = () => {
-  const store = Alpine.store("designer");
-  console.log("Testing loading states...");
-  store.setLoadingState("model", true);
-  store.setLoadingState("design", true);
-  store.setLoadingState("fonts", true);
-};

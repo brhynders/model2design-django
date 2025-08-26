@@ -2,9 +2,10 @@
 
 ## Homekeeping
 
-- [ ] Remove unused python packages (grappelli)
+- [x] Remove unused python packages (grappelli)
 - [ ] Add readme.md
 - [ ] Add contributing.md
+- [ ] Change repo ownership
 
 ## Production
 

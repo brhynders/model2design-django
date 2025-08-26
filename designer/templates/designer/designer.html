@@ -1,6 +1,7 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,21 +11,24 @@
     <link href="{% static 'css/theme.css' %}" rel="stylesheet">
     <link href="{% static 'css/designer.css' %}" rel="stylesheet">
     <link rel="icon" type="image/png" href="{% static 'favicon.png' %}">
-    
+
     <!-- Google Fonts -->
     {% if fonts_list %}
-    <link href="https://fonts.googleapis.com/css2?{% for font in fonts_list %}family={{ font|urlencode }}:wght@400;700{% if not forloop.last %}&{% endif %}{% endfor %}&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?{% for font in fonts_list %}family={{ font|urlencode }}:wght@400;700{% if not forloop.last %}&{% endif %}{% endfor %}&display=swap"
+        rel="stylesheet">
     {% endif %}
-    
+
     <!-- Preconnect for faster loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 </head>
+
 <body>
 
-    <div id="designer-container">
+    <div id="designer-container" x-data>
         <!-- Loading Overlay -->
-        <div id="loading-overlay">
+        <div id="loading-overlay" x-show="$store.designer.isLoading" x-transition>
             <div class="loading-content">
                 <div class="spinner-border text-light mb-3" role="status">
                     <span class="visually-hidden">Loading...</span>
@@ -41,19 +45,19 @@
         </div>
 
         <!-- Left Toolbar -->
-        <div class="left-toolbar">
+        <div class="left-toolbar"
             <!-- View Controls -->
             <div class="toolbar-group">
-                <button class="toolbar-btn" onclick="rotateView('front')" title="Front View">
+                <button class="toolbar-btn" @click="$store.designer.rotateView('front')" title="Front View">
                     <i class="bi bi-square"></i>
                 </button>
-                <button class="toolbar-btn" onclick="rotateView('back')" title="Back View">
+                <button class="toolbar-btn" @click="$store.designer.rotateView('back')" title="Back View">
                     <i class="bi bi-square-fill"></i>
                 </button>
-                <button class="toolbar-btn" onclick="rotateView('left')" title="Left View">
+                <button class="toolbar-btn" @click="$store.designer.rotateView('left')" title="Left View">
                     <i class="bi bi-caret-left-square"></i>
                 </button>
-                <button class="toolbar-btn" onclick="rotateView('right')" title="Right View">
+                <button class="toolbar-btn" @click="$store.designer.rotateView('right')" title="Right View">
                     <i class="bi bi-caret-right-square"></i>
                 </button>
             </div>
@@ -62,10 +66,10 @@
 
             <!-- Rotation Controls -->
             <div class="toolbar-group">
-                <button class="toolbar-btn" onclick="rotateCamera('left')" title="Rotate Left">
+                <button class="toolbar-btn" @click="$store.designer.rotateCamera('left')" title="Rotate Left">
                     <i class="bi bi-arrow-counterclockwise"></i>
                 </button>
-                <button class="toolbar-btn" onclick="rotateCamera('right')" title="Rotate Right">
+                <button class="toolbar-btn" @click="$store.designer.rotateCamera('right')" title="Rotate Right">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>
             </div>
@@ -74,17 +78,17 @@
 
             <!-- Zoom Controls -->
             <div class="toolbar-group">
-                <button class="toolbar-btn" onclick="zoomCamera('in')" title="Zoom In">
+                <button class="toolbar-btn" @click="$store.designer.zoomCamera('in')" title="Zoom In">
                     <i class="bi bi-zoom-in"></i>
                 </button>
-                <button class="toolbar-btn" onclick="zoomCamera('out')" title="Zoom Out">
+                <button class="toolbar-btn" @click="$store.designer.zoomCamera('out')" title="Zoom Out">
                     <i class="bi bi-zoom-out"></i>
                 </button>
             </div>
 
             <!-- Tutorials -->
             <div class="toolbar-group">
-                <button class="toolbar-btn" onclick="openTutorials()" title="Tutorials">
+                <button class="toolbar-btn" @click="window.open('/support', '_blank')" title="Tutorials">
                     <i class="bi bi-question-circle"></i>
                 </button>
             </div>
@@ -98,43 +102,45 @@
 
                 <!-- Background Selector (only for brands with backgrounds) -->
                 {% if current_brand and current_brand.id %}
-                    <div class="viewer-background-selector">
-                        <div class="dropdown">
-                            <button class="background-selector-btn dropdown-toggle" type="button" id="backgroundDropdown"
-                                data-bs-toggle="dropdown" aria-expanded="false" title="Change Background">
-                                <i class="bi bi-image me-2"></i>
-                                <span>Background</span>
-                            </button>
-                            <ul class="dropdown-menu background-dropdown dropdown-menu-end"
-                                aria-labelledby="backgroundDropdown">
-                                <li>
-                                    <h6 class="dropdown-header">Background</h6>
-                                </li>
-                                <li><a class="dropdown-item" href="#" onclick="setBackground(null)">
-                                        <div class="background-option">
-                                            <div class="background-thumbnail bg-light d-flex align-items-center justify-content-center">
-                                                <i class="bi bi-slash-circle text-muted"></i>
-                                            </div>
-                                            <span>None</span>
+                <div class="viewer-background-selector">
+                    <div class="dropdown">
+                        <button class="background-selector-btn dropdown-toggle" type="button" id="backgroundDropdown"
+                            data-bs-toggle="dropdown" aria-expanded="false" title="Change Background">
+                            <i class="bi bi-image me-2"></i>
+                            <span>Background</span>
+                        </button>
+                        <ul class="dropdown-menu background-dropdown dropdown-menu-end"
+                            aria-labelledby="backgroundDropdown">
+                            <li>
+                                <h6 class="dropdown-header">Background</h6>
+                            </li>
+                            <li><a class="dropdown-item" href="#" onclick="setBackground(null)">
+                                    <div class="background-option">
+                                        <div
+                                            class="background-thumbnail bg-light d-flex align-items-center justify-content-center">
+                                            <i class="bi bi-slash-circle text-muted"></i>
                                         </div>
-                                    </a></li>
-                                <!-- Additional background options would be populated here -->
-                            </ul>
-                        </div>
+                                        <span>None</span>
+                                    </div>
+                                </a></li>
+                            <!-- Additional background options would be populated here -->
+                        </ul>
                     </div>
+                </div>
                 {% endif %}
             </div>
 
             <!-- Right Panel -->
-            <div id="right-panel">
+            <div id="right-panel" x-data>
                 <!-- Sidebar Header -->
                 <div class="sidebar-header">
                     <div class="product-info">
-                        <div class="product-name">{{ current_product.name }}</div>
-                        <div class="design-name" id="design-name-display">{% if design_data %}{{ design_data.name }}{% else %}Untitled Design{% endif %}</div>
+                        <div class="product-name"
+                            x-text="$store.designer.product?.name || '{{ current_product.name }}'"></div>
+                        <div class="design-name" x-text="$store.designer.designName" id="design-name-display"></div>
                     </div>
                     <div class="header-icons">
-                        <button class="header-icon-btn" onclick="editDesignName()" title="Edit Design Name">
+                        <button class="header-icon-btn" @click="editDesignName()" title="Edit Design Name">
                             <i class="bi bi-pencil"></i>
                         </button>
                         <button class="header-icon-btn" id="account-popover-btn" data-bs-toggle="popover"
@@ -147,30 +153,40 @@
                 <!-- Layer Tabs -->
                 <div class="layer-tabs-section">
                     <div class="layer-tabs" id="layer-tabs">
-                        <!-- Layer tabs will be populated here -->
+                        <template x-for="(layer, layerId) in $store.designer.layers" :key="layerId">
+                            <button class="layer-tab" :class="{ 'active': $store.designer.currentLayer === layerId }"
+                                @click="$store.designer.setCurrentLayer(layerId)" x-text="layer.name">
+                            </button>
+                        </template>
                     </div>
                 </div>
 
                 <!-- Design Content -->
                 <div class="design-content">
                     <!-- Color Section -->
-                    <div class="design-section">
+                    <div class="design-section" x-data="{
+                             get layerColor() { 
+                                 return $store.designer.getCurrentLayerData().color || 'ffffff'; 
+                             },
+                             get hexValue() {
+                                 return '#' + this.layerColor;
+                             }
+                         }">
                         <h6 class="design-section-label">Color</h6>
                         <div class="color-controls">
                             <div class="color-input-group">
                                 <div class="color-picker-wrapper">
-                                    <input type="color" class="form-control form-control-color" id="color-picker"
-                                        oninput="setCurrentLayerColor(this.value)">
+                                    <input type="color" class="form-control form-control-color" :value="hexValue"
+                                        @input="$store.designer.setLayerColor($event.target.value)">
                                 </div>
                                 <div class="hex-input-wrapper">
                                     <span class="hex-prefix">#</span>
-                                    <input type="text" class="form-control form-control-sm hex-input" id="hex-input"
-                                        placeholder="FFFFFF" maxlength="6"
-                                        oninput="setCurrentLayerColorFromHex(this.value)">
+                                    <input type="text" class="form-control form-control-sm hex-input"
+                                        placeholder="FFFFFF" maxlength="6" :value="layerColor"
+                                        @input="$store.designer.setLayerColor('#' + $event.target.value)">
                                 </div>
-                                <button class="copy-color-btn" id="copy-color-btn" type="button"
-                                    data-bs-toggle="popover" data-bs-placement="bottom" data-bs-html="true"
-                                    title="Copy Color to Other Layers">
+                                <button class="copy-color-btn" type="button" data-bs-toggle="popover"
+                                    data-bs-placement="bottom" data-bs-html="true" title="Copy Color to Other Layers">
                                     <i class="bi bi-palette"></i>
                                 </button>
                             </div>
@@ -198,15 +214,16 @@
                                     <li>
                                         <h6 class="dropdown-header">Add Design</h6>
                                     </li>
-                                    <li><a class="dropdown-item" href="#" onclick="addImageDecal()"
+                                    <li><a class="dropdown-item" href="#" @click="$store.ui.openImageBank()"
                                             data-bs-dismiss="dropdown">
                                             <i class="bi bi-image me-2"></i>Image
                                         </a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="closeDropdownAndAddText(event)"
+                                    <li><a class="dropdown-item" href="#"
+                                            @click="$store.designer.addDecal('text', { text: 'Sample Text', font: 'Roboto', color: '000000' })"
                                             data-bs-dismiss="dropdown">
                                             <i class="bi bi-fonts me-2"></i>Text
                                         </a></li>
-                                    <li><a class="dropdown-item" href="#" onclick="closeDropdownAndAddFade(event)"
+                                    <li><a class="dropdown-item" href="#" @click="$store.designer.addDecal('fade', {})"
                                             data-bs-dismiss="dropdown">
                                             <i class="bi bi-circle-half me-2"></i>Fade
                                         </a></li>
@@ -214,7 +231,33 @@
                             </div>
                         </div>
                         <div class="design-elements-list" id="decals-list">
-                            <!-- Design elements will be populated here -->
+                            <template x-for="decal in $store.designer.getCurrentLayerData().decals || []"
+                                :key="decal.id">
+                                <div class="design-element-item"
+                                    :class="{ 'active': $store.designer.selectedDecal === decal.id }"
+                                    @click="$store.designer.selectDecal(decal.id)">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="decal-info">
+                                            <div class="decal-name"
+                                                x-text="decal.name || (decal.type === 'text' ? decal.text : decal.type)">
+                                            </div>
+                                            <div class="decal-type text-muted" x-text="decal.type"></div>
+                                        </div>
+                                        <div class="decal-actions">
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                @click.stop="$store.designer.deleteDecal(decal.id)" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <div x-show="!$store.designer.getCurrentLayerData().decals?.length"
+                                class="empty-state text-center text-muted py-4">
+                                <i class="bi bi-plus-circle-dotted mb-2" style="font-size: 2rem;"></i>
+                                <p>No designs added yet</p>
+                                <small>Use "Add Design" to get started</small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -227,27 +270,29 @@
                     <!-- Icon Action Buttons Grid -->
                     <div class="action-buttons-grid">
                         {% if not create_template %}
-                            <!-- Save Design (only show for regular designs) -->
-                            <button class="action-btn" onclick="saveDesign()">
-                                <i class="bi bi-save"></i>
-                                <span id="save-btn-text">Save</span>
-                            </button>
+                        <!-- Save Design (only show for regular designs) -->
+                        <button class="action-btn" @click="$store.designer.saveDesign()">
+                            <i class="bi bi-save"></i>
+                            <span>Save</span>
+                        </button>
 
-                            <!-- Templates (only show for regular designs) -->
-                            <button class="action-btn" onclick="openTemplates()">
-                                <i class="bi bi-grid-3x3-gap"></i>
-                                <span>Templates</span>
-                            </button>
+                        <!-- Templates (only show for regular designs) -->
+                        <button class="action-btn" @click="$store.ui.openTemplates()">
+                            <i class="bi bi-grid-3x3-gap"></i>
+                            <span>Templates</span>
+                        </button>
                         {% endif %}
 
                         <!-- Clear Design -->
-                        <button class="action-btn" onclick="confirmClearDesign()">
+                        <button class="action-btn"
+                            @click="confirm('Are you sure you want to clear the design?') && $store.designer.clearDesign()">
                             <i class="bi bi-arrow-clockwise"></i>
                             <span>Clear</span>
                         </button>
 
                         <!-- Exit Designer -->
-                        <button class="action-btn" onclick="confirmExitDesigner()">
+                        <button class="action-btn"
+                            @click="confirm('Are you sure you want to exit the designer?') && (window.location.href = '/products/')">
                             <i class="bi bi-box-arrow-left"></i>
                             <span>Exit</span>
                         </button>
@@ -255,8 +300,8 @@
 
                     <!-- Add to Cart Button Row -->
                     <div class="mt-3">
-                        <button class="btn btn-primary w-100" onclick="openCartModal()" id="add-cart-btn">
-                            <i class="bi bi-cart-plus"></i> <span id="add-cart-text">Add to Cart</span>
+                        <button class="btn btn-primary w-100" @click="$store.ui.openCartModal()" id="add-cart-btn">
+                            <i class="bi bi-cart-plus"></i> <span>Add to Cart</span>
                         </button>
                     </div>
                 </div>
@@ -264,8 +309,81 @@
         </div>
     </div>
 
+    <!-- Alpine.js Modals -->
     <!-- Image Bank Modal -->
-    <div class="modal fade image-bank-modal" id="imageBankModal" tabindex="-1" aria-labelledby="imageBankModalLabel" aria-hidden="true">
+    <template x-if="$store.ui.showImageBank">
+        <div x-transition.opacity class="modal fade" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1050; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5);"
+            @click.self="$store.ui.closeImageBank()">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Image Bank</h5>
+                        <button type="button" class="btn-close" @click="$store.ui.closeImageBank()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center py-4">
+                            <i class="bi bi-images" style="font-size: 3rem; color: #ccc;"></i>
+                            <h6>Image Bank</h6>
+                            <p class="text-muted">Image bank functionality would go here</p>
+                            <button class="btn btn-primary"
+                                @click="$store.designer.addDecal('image', {src: '/static/logo-dark.png', name: 'Sample Image'})">
+                                Add Sample Image
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Templates Modal -->
+    <template x-if="$store.ui.showTemplates">
+        <div x-transition.opacity class="modal fade" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1050; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5);"
+            @click.self="$store.ui.closeTemplates()">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Templates</h5>
+                        <button type="button" class="btn-close" @click="$store.ui.closeTemplates()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center py-4">
+                            <i class="bi bi-grid-3x3-gap" style="font-size: 3rem; color: #ccc;"></i>
+                            <h6>Design Templates</h6>
+                            <p class="text-muted">Template library would go here</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Cart Modal -->
+    <template x-if="$store.ui.showCartModal">
+        <div x-transition.opacity class="modal fade" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1050; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.5);"
+            @click.self="$store.ui.closeCartModal()">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add to Cart</h5>
+                        <button type="button" class="btn-close" @click="$store.ui.closeCartModal()"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="text-center py-4">
+                            <i class="bi bi-cart-plus" style="font-size: 3rem; color: #ccc;"></i>
+                            <h6>Cart Options</h6>
+                            <p class="text-muted">Size selection and cart functionality would go here</p>
+                            <button class="btn btn-success">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Original Image Bank Modal (keeping for reference) -->
+    <div class="modal fade image-bank-modal" id="imageBankModal" tabindex="-1" aria-labelledby="imageBankModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-body">
@@ -276,7 +394,8 @@
     </div>
 
     <!-- Save Design Modal -->
-    <div class="modal fade" id="saveDesignModal" tabindex="-1" aria-labelledby="saveDesignModalLabel" aria-hidden="true">
+    <div class="modal fade" id="saveDesignModal" tabindex="-1" aria-labelledby="saveDesignModalLabel"
+        aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -326,15 +445,15 @@
     <script>
         // Pass PHP data to JavaScript (matching original PHP structure)
         window.phpData = {
-            environment: '{% if debug %}development{% else %}production{% endif %}',
-            user: {% if user.is_authenticated %}{'name': '{{ user.first_name }} {{ user.last_name }}', 'email': '{{ user.email }}'}{% else %}null{% endif %},
+            environment: '{{ settings.DEBUG|yesno:"development,production" }}',
+            user: {% if user.is_authenticated %}{ 'name': '{{ user.first_name|default:"" }} {{ user.last_name|default:"" }}', 'email': '{{ user.email|default:"" }}' }{% else %}null{% endif %},
             isGuest: {{ is_guest|yesno:"true,false" }},
             isBrandOwner: {{ is_brand_owner|yesno:"true,false" }},
-            userBrand: {% if user.is_authenticated and is_brand_owner %}{'id': {{ current_brand.id }}, 'name': '{{ current_brand.name }}'}{% else %}null{% endif %},
+            userBrand: {% if user.is_authenticated and is_brand_owner %}{ 'id': {{ current_brand.id|default:0 }}, 'name': '{{ current_brand.name|default:"" }}' }{% else %}null{% endif %},
             brand: {
-                id: {{ current_brand.id }},
-                name: '{{ current_brand.name }}',
-                primaryColor: '{{ current_brand.primary_color }}'
+                id: {{ current_brand.id|default:0 }},
+                name: '{{ current_brand.name|default:"" }}',
+                primaryColor: '{{ current_brand.primary_color|default:"#000000" }}'
             },
             product: {{ current_product_json|safe }},
             bumpmaps: {{ bumpmaps|safe }},
@@ -349,46 +468,21 @@
             templateEditId: null,
             brandBackgrounds: []
         };
-        
+
         // For backward compatibility
         window.designerData = window.phpData;
-        
-        // Quick test: Hide loading overlay after 3 seconds as a test
-        setTimeout(function() {
-            const loadingOverlay = document.getElementById('loading-overlay');
-            console.log('3 second timeout - loading overlay element:', loadingOverlay);
-            if (loadingOverlay) {
-                loadingOverlay.style.display = 'none';
-                console.log('Loading overlay hidden via timeout');
-            }
-        }, 3000);
-        
-        // Fallback: Hide loading overlay after 10 seconds if it's still showing
-        setTimeout(function() {
-            const loadingOverlay = document.getElementById('loading-overlay');
-            if (loadingOverlay && window.getComputedStyle(loadingOverlay).display !== 'none') {
-                console.warn('Loading took too long, hiding overlay as fallback');
-                loadingOverlay.style.display = 'none';
-            }
-        }, 10000);
-        
-        // Debug: Check if jQuery is available
-        setTimeout(function() {
-            if (typeof $ === 'undefined') {
-                console.error('jQuery is not available - designer initialization will fail');
-            } else {
-                console.log('jQuery is available, designer should initialize');
-            }
-        }, 1000);
+
+        // Alpine.js will handle loading state automatically through the store
     </script>
 
     <!-- Scripts -->
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="{% static 'js/three.min.js' %}"></script>
     <script src="{% static 'js/OrbitControls.js' %}"></script>
     <script src="{% static 'js/GLTFLoader.js' %}"></script>
     <script src="{% static 'js/RGBELoader.js' %}"></script>
-    <script src="{% static 'js/designer.js' %}"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="{% static 'js/designer-alpine.js' %}"></script>
 </body>
+
 </html>

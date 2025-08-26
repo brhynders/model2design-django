@@ -25,7 +25,7 @@
             <div class="bg-white border rounded p-3">
                 <div class="position-relative">
                     {% if product.thumbnail %}
-                        <img src="{% if product.thumbnail|slice:':4' == 'http' %}{{ product.thumbnail }}{% else %}{% static product.thumbnail %}{% endif %}" 
+                        <img src="{% if product.thumbnail|slice:':4' == 'http' %}{{ product.thumbnail }}{% elif product.thumbnail|slice:':8' == '/static/' %}{{ product.thumbnail }}{% else %}{% static product.thumbnail %}{% endif %}" 
                              alt="{{ product.name }}" 
                              class="img-fluid rounded w-100" 
                              style="height: 400px; object-fit: cover;">
@@ -124,7 +124,23 @@
 
             <!-- Price Range -->
             <div class="mb-4">
-                <span class="h3 fw-bold">${{ product.get_min_price|floatformat:2 }} - ${{ product.get_base_price|floatformat:2 }}</span>
+                <span class="h3 fw-bold">
+                    {% if product.prices %}
+                        {% for qty, price in product.prices.items %}
+                            {% if forloop.first %}
+                                {% if forloop.last %}
+                                    ${{ price|floatformat:2 }}
+                                {% else %}
+                                    ${{ price|floatformat:2 }}
+                                {% endif %}
+                            {% elif forloop.last %}
+                                - ${{ price|floatformat:2 }}
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        Contact for pricing
+                    {% endif %}
+                </span>
             </div>
 
             <!-- Customize Button -->

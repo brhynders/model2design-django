@@ -10,7 +10,8 @@ import json
 import uuid
 from .models import Design, DesignTemplate, DesignShare
 from brands.models import Brand
-from products.data import products, get_product_by_id
+from products.models import Product
+from products.data import products as PRODUCTS_DATA, bumpmap_textures as BUMPMAPS_DATA, fonts as FONTS_DATA, get_product_by_id
 
 
 def designer_view(request):
@@ -37,10 +38,14 @@ def designer_view(request):
     except (ValueError, TypeError):
         product_id = 0
         
-    # Find the current product
-    current_product = get_product_by_id(product_id)
-    if not current_product and products:
-        current_product = products[0]
+    # Find the current product from static data
+    current_product = None
+    if product_id is not None:
+        current_product = get_product_by_id(product_id)
+    
+    # Fall back to first product if none specified or not found
+    if not current_product and PRODUCTS_DATA:
+        current_product = PRODUCTS_DATA[0]
         product_id = current_product['id']
     
     # Load design data if design ID is provided
@@ -148,9 +153,12 @@ def designer_view(request):
         except (ValueError, DesignTemplate.DoesNotExist):
             pass
     
-    # Import data files  
-    from products.data import bumpmap_textures, fonts
-    import json
+    # Convert static product dict to ensure JavaScript compatibility
+    def product_to_dict(product):
+        if not product:
+            return None
+        # Static product is already a dict, just return it
+        return product
     
     context = {
         'page_title': 'Designer',
@@ -158,16 +166,15 @@ def designer_view(request):
         'user': request.user if request.user.is_authenticated else None,
         'is_guest': not request.user.is_authenticated,
         'is_brand_owner': is_brand_owner,
-        'products': json.dumps(products),
         'current_product': current_product,  # Raw product object for template HTML
-        'current_product_json': json.dumps(current_product) if current_product else 'null',  # JSON for JavaScript
+        'current_product_json': json.dumps(product_to_dict(current_product)) if current_product else 'null',  # JSON for JavaScript
         'product_id': product_id,
         'design_data': json.dumps(design_data) if design_data else None,
         'template_data': json.dumps(template_data) if template_data else None,
         'create_template': create_template,
-        'bumpmaps': json.dumps(bumpmap_textures),
-        'fonts': json.dumps(fonts),
-        'fonts_list': fonts,  # Pass the raw list for template iteration
+        'bumpmaps': json.dumps(BUMPMAPS_DATA),
+        'fonts': json.dumps(FONTS_DATA),
+        'fonts_list': FONTS_DATA,  # Pass the raw list for template iteration
     }
     
     return render(request, 'designer/designer.html', context)

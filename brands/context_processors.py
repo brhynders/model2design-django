@@ -1,5 +1,6 @@
 from .models import Brand
 from products.models import ProductCategory, BrandProduct
+from products.data import products as PRODUCTS_DATA
 
 
 def brand_context(request):
@@ -20,12 +21,19 @@ def brand_context(request):
             secondary_color="#6c757d"
         )
     
-    # Get product categories that have available products for this brand
-    available_categories = ProductCategory.objects.filter(
-        product__brandproduct__brand=brand,
-        product__brandproduct__is_available=True,
-        product__can_order=True
-    ).distinct().order_by('name')
+    # Get product categories from static data
+    from django.utils.text import slugify
+    categories = set()
+    for product in PRODUCTS_DATA:
+        if product.get('canOrder', True):
+            for category in product.get('categories', []):
+                categories.add(category)
+    
+    # Convert to list of dictionaries with name and slug (for template compatibility)
+    available_categories = [
+        {'name': cat, 'slug': slugify(cat)} 
+        for cat in sorted(categories)
+    ]
     
     return {
         'current_brand': brand,

@@ -238,7 +238,7 @@
                         <div class="card border-0 shadow-sm h-100 product-card shadow-hover">
                             <div class="position-relative">
                                 {% if product.thumbnail %}
-                                    <img src="{% static product.thumbnail %}" alt="{{ product.name }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                                    <img src="{% if product.thumbnail|slice:':4' == 'http' %}{{ product.thumbnail }}{% elif product.thumbnail|slice:':8' == '/static/' %}{{ product.thumbnail }}{% else %}{% static product.thumbnail %}{% endif %}" alt="{{ product.name }}" class="card-img-top" style="height: 200px; object-fit: cover;">
                                 {% else %}
                                     <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
                                         <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>
@@ -330,7 +330,7 @@
                             <div class="card border-0 shadow-sm h-100 product-card shadow-hover">
                                 <div class="position-relative">
                                     {% if product.thumbnail %}
-                                        <img src="{% static product.thumbnail %}" alt="{{ product.name }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                                        <img src="{% if product.thumbnail|slice:':4' == 'http' %}{{ product.thumbnail }}{% elif product.thumbnail|slice:':8' == '/static/' %}{{ product.thumbnail }}{% else %}{% static product.thumbnail %}{% endif %}" alt="{{ product.name }}" class="card-img-top" style="height: 200px; object-fit: cover;">
                                     {% else %}
                                         <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
                                             <i class="bi bi-image text-muted" style="font-size: 3rem;"></i>

@@ -9,7 +9,7 @@ from django.utils import timezone
 import json
 import uuid
 from .models import Design, DesignTemplate, DesignShare
-from brands.models import Brand
+from brands.models import Brand, BrandBackground
 from products.models import Product
 from products.data import products as PRODUCTS_DATA, bumpmap_textures as BUMPMAPS_DATA, fonts as FONTS_DATA, get_product_by_id
 
@@ -160,6 +160,25 @@ def designer_view(request):
         # Static product is already a dict, just return it
         return product
     
+    # Get brand backgrounds
+    brand_backgrounds = []
+    if current_brand:
+        backgrounds = BrandBackground.objects.filter(
+            brand=current_brand,
+            is_active=True
+        ).order_by('sort_order', 'name')
+        
+        brand_backgrounds = [
+            {
+                'id': bg.id,
+                'name': bg.name,
+                'image_url': bg.image_url,
+                'thumbnail_url': bg.thumbnail_url,
+                'is_default': bg.is_default,
+            }
+            for bg in backgrounds
+        ]
+    
     context = {
         'page_title': 'Designer',
         'current_brand': current_brand,
@@ -175,6 +194,7 @@ def designer_view(request):
         'bumpmaps': json.dumps(BUMPMAPS_DATA),
         'fonts': json.dumps(FONTS_DATA),
         'fonts_list': FONTS_DATA,  # Pass the raw list for template iteration
+        'brand_backgrounds': json.dumps(brand_backgrounds),
     }
     
     return render(request, 'designer/designer.html', context)

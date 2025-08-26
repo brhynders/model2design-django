@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//mnt/c/Users/brand/Repos/**)",
+      "Read(//mnt/c/Users/brand/Repos/**)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(python manage.py makemigrations:*)",
+      "Bash(pip install:*)",
+      "Bash(python manage.py:*)"
+    ],
+    "deny": [],
+    "ask": [],
+    "additionalDirectories": [
+      "/mnt/c/Users/brand/Repos/model2ddesign-php"
+    ]
+  }
+}

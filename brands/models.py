@@ -215,6 +215,37 @@ class BrandImage(models.Model):
         return f"{self.brand.name} - {self.name}"
 
 
+class BrandBackground(models.Model):
+    """Background images for brand 3D designer"""
+    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='backgrounds')
+    name = models.CharField(max_length=200)
+    image = models.ImageField(upload_to='brand_backgrounds/', help_text="Background image file")
+    thumbnail = models.ImageField(upload_to='brand_backgrounds/thumbnails/', blank=True, help_text="Optional thumbnail (auto-generated if empty)")
+    is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(default=False, help_text="Default background for this brand")
+    sort_order = models.PositiveIntegerField(default=0, help_text="Display order (lower numbers first)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['sort_order', 'name']
+        verbose_name = "Brand Background"
+        verbose_name_plural = "Brand Backgrounds"
+    
+    def __str__(self):
+        return f"{self.brand.name} - {self.name}"
+    
+    @property
+    def image_url(self):
+        """Get the full URL for the background image"""
+        return self.image.url if self.image else ''
+    
+    @property
+    def thumbnail_url(self):
+        """Get the thumbnail URL, fall back to main image if no thumbnail"""
+        return self.thumbnail.url if self.thumbnail else self.image_url
+
+
 class BrandTemplate(models.Model):
     """Brand-specific design templates"""
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='templates')

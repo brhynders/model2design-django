@@ -110,11 +110,13 @@
                             <span>Background</span>
                         </button>
                         <ul class="dropdown-menu background-dropdown dropdown-menu-end"
-                            aria-labelledby="backgroundDropdown">
+                            aria-labelledby="backgroundDropdown" x-data="{
+                                backgrounds: window.phpData?.brandBackgrounds || []
+                            }">
                             <li>
                                 <h6 class="dropdown-header">Background</h6>
                             </li>
-                            <li><a class="dropdown-item" href="#" onclick="setBackground(null)">
+                            <li><a class="dropdown-item" href="#" @click.prevent="$store.designer.setBackground(null)">
                                     <div class="background-option">
                                         <div
                                             class="background-thumbnail bg-light d-flex align-items-center justify-content-center">
@@ -123,7 +125,17 @@
                                         <span>None</span>
                                     </div>
                                 </a></li>
-                            <!-- Additional background options would be populated here -->
+                            <!-- Dynamic background options -->
+                            <template x-for="background in backgrounds" :key="background.id">
+                                <li><a class="dropdown-item" href="#" @click.prevent="$store.designer.setBackground(background.id)">
+                                        <div class="background-option">
+                                            <div class="background-thumbnail"
+                                                :style="`background-image: url('${background.thumbnail_url}'); background-size: cover; background-position: center;`">
+                                            </div>
+                                            <span x-text="background.name"></span>
+                                        </div>
+                                    </a></li>
+                            </template>
                         </ul>
                     </div>
                 </div>
@@ -466,11 +478,14 @@
             designData: {% if design_data %}{{ design_data|safe }}{% else %}null{% endif %},
             createTemplate: {{ create_template|yesno:"true,false" }},
             templateEditId: null,
-            brandBackgrounds: []
+            brandBackgrounds: {{ brand_backgrounds|safe }}
         };
 
         // For backward compatibility
         window.designerData = window.phpData;
+
+        // Global setBackground function for backward compatibility with onclick handlers
+        window.setBackground = (backgroundId) => Alpine.store('designer').setBackground(backgroundId);
 
         // Alpine.js will handle loading state automatically through the store
     </script>

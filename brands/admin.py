@@ -3,7 +3,7 @@ from django.utils.html import format_html
 from django.utils import timezone
 from .models import (
     Brand, BrandOwner, BrandImage, BrandImageCategory, 
-    BrandTemplate, BrandEarnings, PartnerRequest
+    BrandTemplate, BrandEarnings, PartnerRequest, BrandBackground
 )
 from products.models import BrandProduct
 
@@ -35,6 +35,19 @@ class BrandTemplateInline(admin.TabularInline):
     fields = ['name', 'description', 'is_public', 'is_featured', 'usage_count']
 
 
+class BrandBackgroundInline(admin.TabularInline):
+    model = BrandBackground
+    extra = 0
+    readonly_fields = ['created_at', 'updated_at', 'image_preview']
+    fields = ['name', 'image', 'thumbnail', 'is_active', 'is_default', 'sort_order', 'image_preview']
+    
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="max-height: 50px; max-width: 100px;" />', obj.image.url)
+        return "No image"
+    image_preview.short_description = "Preview"
+
+
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
     list_display = ['name', 'slug', 'subdomain', 'is_default', 'is_active', 'get_product_count', 'created_at']
@@ -59,7 +72,7 @@ class BrandAdmin(admin.ModelAdmin):
         })
     )
     
-    inlines = [BrandOwnerInline, BrandProductInline, BrandImageInline, BrandTemplateInline]
+    inlines = [BrandOwnerInline, BrandProductInline, BrandImageInline, BrandTemplateInline, BrandBackgroundInline]
     
     def get_product_count(self, obj):
         return BrandProduct.objects.filter(brand=obj, is_available=True).count()
@@ -225,3 +238,31 @@ class PartnerRequestAdmin(admin.ModelAdmin):
                 obj.reviewed_by = request.user
                 obj.reviewed_at = timezone.now()
         super().save_model(request, obj, form, change)
+
+
+@admin.register(BrandBackground)
+class BrandBackgroundAdmin(admin.ModelAdmin):
+    list_display = ['name', 'brand', 'is_active', 'is_default', 'sort_order', 'image_preview', 'created_at']
+    list_filter = ['brand', 'is_active', 'is_default', 'created_at']
+    search_fields = ['name', 'brand__name']
+    readonly_fields = ['created_at', 'updated_at', 'image_preview']
+    list_editable = ['sort_order', 'is_active', 'is_default']
+    
+    fieldsets = (
+        ('Basic Information', {
+            'fields': ('name', 'brand', 'is_active', 'is_default', 'sort_order')
+        }),
+        ('Images', {
+            'fields': ('image', 'thumbnail', 'image_preview')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
+    
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="max-height: 100px; max-width: 200px;" />', obj.image.url)
+        return "No image"
+    image_preview.short_description = "Preview"

@@ -89,6 +89,16 @@
         </div>
       </div>
 
+      <!-- Adding Image Overlay -->
+      <div id="adding-image-overlay" x-show="$store.designer.isAddingImage" x-transition>
+        <div class="loading-content">
+          <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Adding image...</span>
+          </div>
+          <p>Adding image to design...</p>
+        </div>
+      </div>
+
       <!-- Fixed Brand Logo -->
       <div class="fixed-brand">
         <img
@@ -487,28 +497,41 @@
                   <div
                     class="design-element-item"
                     :class="{ 'active': $store.designer.selectedDecal === decal.id }"
+                    :data-decal="decal.id"
+                    draggable="true"
                     @click="$store.designer.selectDecal(decal.id)"
                   >
-                    <div
-                      class="d-flex justify-content-between align-items-center"
-                    >
-                      <div class="decal-info">
+                    <div class="design-element-content">
+                      <div class="design-element-drag-handle">
+                        <i class="bi bi-grip-vertical" style="cursor: grab;"></i>
+                      </div>
+                      <div class="design-element-info">
                         <div
-                          class="decal-name"
+                          class="design-element-name"
                           x-text="decal.name || (decal.type === 'text' ? decal.text : decal.type)"
                         ></div>
-                        <div
-                          class="decal-type text-muted"
-                          x-text="decal.type"
-                        ></div>
                       </div>
-                      <div class="decal-actions">
+                      <div class="design-element-actions">
+                        <button 
+                          class="btn btn-xs btn-outline-secondary" 
+                          @click.stop="$store.designer.showDecalLayerMenu(decal.id, $el)" 
+                          title="Move/Copy to Layer"
+                        >
+                          <i class="bi bi-layers" style="font-size: 12px;"></i>
+                        </button>
+                        <button 
+                          class="btn btn-xs btn-outline-secondary" 
+                          @click.stop="$store.designer.duplicateDecal(decal.id)" 
+                          title="Duplicate"
+                        >
+                          <i class="bi bi-files" style="font-size: 12px;"></i>
+                        </button>
                         <button
-                          class="btn btn-sm btn-outline-danger"
+                          class="btn btn-xs btn-outline-danger"
                           @click.stop="$store.designer.deleteDecal(decal.id)"
                           title="Delete"
                         >
-                          <i class="bi bi-trash"></i>
+                          <i class="bi bi-trash" style="font-size: 12px;"></i>
                         </button>
                       </div>
                     </div>
@@ -631,7 +654,7 @@
                     aria-valuemax="100"
                   ></div>
                 </div>
-                <small class="progress-text" x-text="`${$store.imageBank.uploadProgress}% complete`"></small>
+                <small class="progress-text" x-text="`${Math.round($store.imageBank.uploadProgress)}% complete`"></small>
               </div>
             </div>
           </div>

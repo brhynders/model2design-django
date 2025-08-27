@@ -20,6 +20,7 @@ document.addEventListener("alpine:init", () => {
   Alpine.store("designer", {
     // Loading states
     isLoading: true,
+    isAddingImage: false,
     loadingStates: {
       model: false,
       design: false,
@@ -482,7 +483,8 @@ document.addEventListener("alpine:init", () => {
         return;
       }
 
-      // Show loading state (optional)
+      // Show loading state
+      this.isAddingImage = true;
       debugLog("Loading texture from:", imageUrl);
 
       textureLoader.load(
@@ -518,6 +520,9 @@ document.addEventListener("alpine:init", () => {
           this.layers[this.currentLayer].decals.push(decal);
           this.selectedDecal = decal.id;
           this.renderLayer();
+          
+          // Hide loading state
+          this.isAddingImage = false;
           debugLog("Image decal added with texture:", decal);
         },
         (progress) => {
@@ -527,6 +532,9 @@ document.addEventListener("alpine:init", () => {
         (error) => {
           // Error callback
           debugError("Failed to load texture:", imageUrl, error);
+          
+          // Hide loading state
+          this.isAddingImage = false;
           alert("Failed to load image. Please try again.");
         }
       );
@@ -823,6 +831,7 @@ document.addEventListener("alpine:init", () => {
       // Loaders
       gltfLoader = new THREE.GLTFLoader();
       textureLoader = new THREE.TextureLoader();
+      textureLoader.crossOrigin = 'anonymous'; // Fix CORS issues
       rgbeLoader = new THREE.RGBELoader();
 
       // Create PMREM generator for environment maps

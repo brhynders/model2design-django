@@ -4,6 +4,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    {% csrf_token %}
     <title>{{ page_title }} - {{ current_brand.name }}</title>
     <link href="{% static 'css/bootstrap.min.css' %}" rel="stylesheet" />
     <link href="{% static 'css/bootstrap-icons.min.css' %}" rel="stylesheet" />
@@ -96,6 +98,16 @@
             <span class="visually-hidden">Adding image...</span>
           </div>
           <p>Adding image to design...</p>
+        </div>
+      </div>
+
+      <!-- Saving Design Overlay -->
+      <div id="saving-design-overlay" x-show="$store.designer.isSavingDesign" x-transition>
+        <div class="loading-content">
+          <div class="spinner-border text-success mb-3" role="status">
+            <span class="visually-hidden">Saving design...</span>
+          </div>
+          <p>Saving design...</p>
         </div>
       </div>
 
@@ -322,9 +334,11 @@
 
           <!-- Design Content -->
           <div class="design-content">
-            <!-- Color Section -->
-            <div
-              class="design-section"
+            <!-- Normal Mode Sections -->
+            <div x-show="!$store.designer.isDecalEditMode" x-transition>
+              <!-- Color Section -->
+              <div
+                class="design-section"
               x-data="{
                              get layerColor() { 
                                  return $store.designer.getCurrentLayerData().color || 'ffffff'; 
@@ -434,8 +448,12 @@
               </div>
             </div>
 
-            <!-- Designs Section -->
-            <div class="design-section">
+            <!-- Designs Section - Normal Mode -->
+            <div 
+              class="design-section" 
+              x-show="!$store.designer.isDecalEditMode"
+              x-transition
+            >
               <div class="design-section-header">
                 <h6 class="design-section-label">Designs</h6>
                 <div class="dropdown">
@@ -470,8 +488,7 @@
                       <a
                         class="dropdown-item"
                         href="#"
-                        @click="$store.designer.addDecal('text', { text: 'Sample Text', font: 'Roboto', color: '000000' })"
-                        data-bs-dismiss="dropdown"
+                        @click.prevent="$store.designer.addTextDecal()"
                       >
                         <i class="bi bi-fonts me-2"></i>Text
                       </a>
@@ -480,8 +497,7 @@
                       <a
                         class="dropdown-item"
                         href="#"
-                        @click="$store.designer.addDecal('fade', {})"
-                        data-bs-dismiss="dropdown"
+                        @click.prevent="$store.designer.addFadeDecal()"
                       >
                         <i class="bi bi-circle-half me-2"></i>Fade
                       </a>
@@ -499,7 +515,7 @@
                     :class="{ 'active': $store.designer.selectedDecal === decal.id }"
                     :data-decal="decal.id"
                     draggable="true"
-                    @click="$store.designer.selectDecal(decal.id)"
+                    @click="$store.designer.enterDecalEditMode(decal.id)"
                   >
                     <div class="design-element-content">
                       <div class="design-element-drag-handle">
@@ -512,13 +528,55 @@
                         ></div>
                       </div>
                       <div class="design-element-actions">
-                        <button 
-                          class="btn btn-xs btn-outline-secondary" 
-                          @click.stop="$store.designer.showDecalLayerMenu(decal.id, $el)" 
-                          title="Move/Copy to Layer"
-                        >
-                          <i class="bi bi-layers" style="font-size: 12px;"></i>
-                        </button>
+                        <div class="dropdown decal-layer-dropdown">
+                          <button 
+                            class="btn btn-xs btn-outline-secondary" 
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            data-bs-auto-close="true"
+                            aria-expanded="false"
+                            title="Move/Copy to Layer"
+                            @click.stop
+                          >
+                            <i class="bi bi-layers" style="font-size: 12px;"></i>
+                          </button>
+                          <div class="dropdown-menu decal-layer-dropdown-menu">
+                            <!-- Move to layer section -->
+                            <h6 class="dropdown-header">Move to layer</h6>
+                            <template x-for="(layer, layerName) in $store.designer.getAvailableLayers()" :key="layerName">
+                              <a class="dropdown-item" 
+                                 href="#" 
+                                 @click.prevent="$store.designer.moveDecalToLayer(decal.id, layerName)"
+                                 x-text="$store.designer.formatLayerName(layerName)">
+                              </a>
+                            </template>
+                            <template x-if="Object.keys($store.designer.getAvailableLayers()).length === 0">
+                              <span class="dropdown-item-text text-muted small">No available layers</span>
+                            </template>
+                            
+                            <div class="dropdown-divider"></div>
+                            
+                            <!-- Copy to layer section -->
+                            <h6 class="dropdown-header">Copy to other layers</h6>
+                            <template x-if="Object.keys($store.designer.getAvailableLayers()).length > 1">
+                              <a class="dropdown-item fw-bold" 
+                                 href="#" 
+                                 @click.prevent="$store.designer.copyDecalToAllLayers(decal.id)">
+                                <i class="bi bi-layers me-2"></i>All Layers
+                              </a>
+                            </template>
+                            <template x-for="(layer, layerName) in $store.designer.getAvailableLayers()" :key="`copy-${layerName}`">
+                              <a class="dropdown-item" 
+                                 href="#" 
+                                 @click.prevent="$store.designer.copyDecalToLayer(decal.id, layerName)"
+                                 x-text="$store.designer.formatLayerName(layerName)">
+                              </a>
+                            </template>
+                            <template x-if="Object.keys($store.designer.getAvailableLayers()).length === 0">
+                              <span class="dropdown-item-text text-muted small">No available layers</span>
+                            </template>
+                          </div>
+                        </div>
                         <button 
                           class="btn btn-xs btn-outline-secondary" 
                           @click.stop="$store.designer.duplicateDecal(decal.id)" 
@@ -549,6 +607,424 @@
                   <small>Use "Add Design" to get started</small>
                 </div>
               </div>
+
+            </div>
+            </div>
+
+            <!-- Full-Screen Decal Edit Mode -->
+            <div 
+              class="decal-edit-mode" 
+              x-show="$store.designer.isDecalEditMode"
+              x-transition
+              style="display: none;"
+            >
+            <template x-if="$store.designer.getSelectedDecal()">
+              <div x-data="{ decal: $store.designer.getSelectedDecal() }">
+                <!-- Header -->
+                <div class="decal-edit-header">
+                  <div class="decal-edit-back-row">
+                    <button class="btn btn-outline-secondary btn-sm" @click="$store.designer.exitDecalEditMode()">
+                      <i class="bi bi-arrow-left me-1"></i> Back to Design
+                    </button>
+                  </div>
+                  <div class="decal-edit-main-row">
+                    <div class="decal-edit-title">
+                      <h5 class="mb-0">Edit Design</h5>
+                      <small class="text-muted" x-text="decal.name"></small>
+                    </div>
+                    <div class="decal-edit-actions">
+                      <div class="dropdown decal-layer-dropdown">
+                        <button 
+                          class="btn btn-outline-secondary decal-edit-icon-btn" 
+                          type="button"
+                          data-bs-toggle="dropdown"
+                          data-bs-boundary="viewport"
+                          data-bs-auto-close="true"
+                          aria-expanded="false"
+                          title="Move/Copy to Layer"
+                        >
+                          <i class="bi bi-layers"></i>
+                        </button>
+                        <div class="dropdown-menu decal-layer-dropdown-menu">
+                          <!-- Move to layer section -->
+                          <h6 class="dropdown-header">Move to layer</h6>
+                          <template x-for="(layer, layerName) in $store.designer.getAvailableLayers()" :key="layerName">
+                            <a class="dropdown-item" 
+                               href="#" 
+                               @click.prevent="$store.designer.moveDecalToLayer(decal.id, layerName)"
+                               x-text="$store.designer.formatLayerName(layerName)">
+                            </a>
+                          </template>
+                          <template x-if="Object.keys($store.designer.getAvailableLayers()).length === 0">
+                            <span class="dropdown-item-text text-muted small">No available layers</span>
+                          </template>
+                          
+                          <div class="dropdown-divider"></div>
+                          
+                          <!-- Copy to layer section -->
+                          <h6 class="dropdown-header">Copy to other layers</h6>
+                          <template x-if="Object.keys($store.designer.getAvailableLayers()).length > 1">
+                            <a class="dropdown-item fw-bold" 
+                               href="#" 
+                               @click.prevent="$store.designer.copyDecalToAllLayers(decal.id)">
+                              <i class="bi bi-layers me-2"></i>All Layers
+                            </a>
+                          </template>
+                          <template x-for="(layer, layerName) in $store.designer.getAvailableLayers()" :key="`copy-${layerName}`">
+                            <a class="dropdown-item" 
+                               href="#" 
+                               @click.prevent="$store.designer.copyDecalToLayer(decal.id, layerName)"
+                               x-text="$store.designer.formatLayerName(layerName)">
+                            </a>
+                          </template>
+                          <template x-if="Object.keys($store.designer.getAvailableLayers()).length === 0">
+                            <span class="dropdown-item-text text-muted small">No available layers</span>
+                          </template>
+                        </div>
+                      </div>
+                      <button 
+                        class="btn btn-outline-secondary decal-edit-icon-btn" 
+                        @click="$store.designer.duplicateDecal(decal.id)" 
+                        title="Duplicate"
+                      >
+                        <i class="bi bi-files"></i>
+                      </button>
+                      <button 
+                        class="btn btn-outline-danger decal-edit-icon-btn" 
+                        @click="$store.designer.deleteDecal(decal.id); $store.designer.exitDecalEditMode();" 
+                        title="Delete"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Editor Content -->
+                <div class="decal-edit-content">
+                  <div class="decal-sections-wrapper">
+                      <!-- Text Content Section -->
+                      <div class="decal-edit-section" x-show="decal.type === 'text'">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-fonts me-2"></i>Text Content
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="control-row">
+                            <label class="control-label">Text</label>
+                            <div class="control-input-group">
+                              <input type="text" class="form-control form-control-sm" 
+                                     :value="decal.text" 
+                                     @input="$store.designer.updateTextProperty('text', $event.target.value)">
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Text Style Section -->
+                      <div class="decal-edit-section" x-show="decal.type === 'text'">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-palette me-2"></i>Text Style
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="control-row">
+                            <label class="control-label">Font</label>
+                            <div class="control-input-group">
+                              <div class="dropdown font-dropdown-wrapper">
+                                <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start font-dropdown-btn" 
+                                        type="button" 
+                                        data-bs-toggle="dropdown" 
+                                        data-bs-auto-close="true"
+                                        aria-expanded="false"
+                                        :style="`font-family: '${decal.font}', Arial, sans-serif;`">
+                                  <span x-text="decal.font || 'Select Font'"></span>
+                                </button>
+                                <ul class="dropdown-menu font-dropdown-menu">
+                                  <template x-for="font in (window.phpData?.fonts || [])" :key="font">
+                                    <li>
+                                      <a class="dropdown-item font-dropdown-item" 
+                                         href="#" 
+                                         @click.prevent="$store.designer.updateTextProperty('font', font)"
+                                         :class="{ 'active': decal.font === font }"
+                                         :style="`font-family: '${font}', Arial, sans-serif;`">
+                                        <span x-text="font"></span>
+                                      </a>
+                                    </li>
+                                  </template>
+                                </ul>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="control-row">
+                            <label class="control-label">Text Color</label>
+                            <div class="control-input-group">
+                              <input type="color" class="form-control form-control-color" 
+                                     :value="decal.color" 
+                                     @input="$store.designer.updateTextProperty('color', $event.target.value)">
+                              <span class="value-display" x-text="decal.color"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Text Effects Section -->
+                      <div class="decal-edit-section" x-show="decal.type === 'text'">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-type me-2"></i>Text Effects
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="control-row">
+                            <label class="control-label">Letter Spacing</label>
+                            <div class="control-input-group">
+                              <input type="range" class="form-range" 
+                                     min="-20" max="50" 
+                                     :value="decal.letterSpacing || 0" 
+                                     @input="$store.designer.updateTextProperty('letterSpacing', parseInt($event.target.value))">
+                              <span class="value-display" x-text="`${decal.letterSpacing || 0}px`"></span>
+                            </div>
+                          </div>
+                          <div class="control-row">
+                            <label class="control-label">Border Width</label>
+                            <div class="control-input-group">
+                              <input type="range" class="form-range" 
+                                     min="0" max="20" 
+                                     :value="decal.borderWidth || 0" 
+                                     @input="$store.designer.updateTextProperty('borderWidth', parseInt($event.target.value))">
+                              <span class="value-display" x-text="`${decal.borderWidth || 0}px`"></span>
+                            </div>
+                          </div>
+                          <div class="control-row">
+                            <label class="control-label">Border Color</label>
+                            <div class="control-input-group">
+                              <input type="color" class="form-control form-control-color" 
+                                     :value="decal.borderColor || '#000000'" 
+                                     @input="$store.designer.updateTextProperty('borderColor', $event.target.value)">
+                              <span class="value-display" x-text="decal.borderColor || '#000000'"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Text Appearance Section -->
+                      <div class="decal-edit-section" x-show="decal.type === 'text'">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-transparency me-2"></i>Appearance
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="control-row">
+                            <label class="control-label">Opacity</label>
+                            <div class="control-input-group">
+                              <input type="range" class="form-range" 
+                                     min="0" max="100" 
+                                     :value="(decal.opacity || 1) * 100" 
+                                     @input="$store.designer.updateTextProperty('opacity', parseFloat($event.target.value) / 100)">
+                              <span class="value-display" x-text="`${Math.round((decal.opacity || 1) * 100)}%`"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Text Transform Section -->
+                      <div class="decal-edit-section" x-show="decal.type === 'text'">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-symmetry-horizontal me-2"></i>Transform
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="control-row">
+                            <label class="control-label">Flip</label>
+                            <div class="control-input-group" style="display: flex; gap: 8px;">
+                              <button type="button" class="btn btn-outline-secondary btn-sm"
+                                      :class="{ 'active': decal.flipX }"
+                                      @click="$store.designer.updateTextProperty('flipX', !decal.flipX)">
+                                <i class="bi bi-symmetry-vertical"></i> Horizontal
+                              </button>
+                              <button type="button" class="btn btn-outline-secondary btn-sm"
+                                      :class="{ 'active': decal.flipY }"
+                                      @click="$store.designer.updateTextProperty('flipY', !decal.flipY)">
+                                <i class="bi bi-symmetry-horizontal"></i> Vertical
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Fade Settings Section -->
+                      <div class="decal-edit-section" x-show="decal.type === 'fade'">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-circle-half me-2"></i>Fade Settings
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="control-row">
+                            <label class="control-label">Base Color</label>
+                            <div class="control-input-group">
+                              <input type="color" class="form-control form-control-color" 
+                                     :value="decal.fadeData?.baseColor || '#000000'" 
+                                     @input="$store.designer.updateFadeProperty('baseColor', $event.target.value)">
+                              <span class="value-display" x-text="decal.fadeData?.baseColor || '#000000'"></span>
+                            </div>
+                          </div>
+                          <div class="control-row">
+                            <label class="control-label">Blend Color</label>
+                            <div class="control-input-group">
+                              <input type="color" class="form-control form-control-color" 
+                                     :value="decal.fadeData?.blendColor || '#ffffff'" 
+                                     @input="$store.designer.updateFadeProperty('blendColor', $event.target.value)">
+                              <span class="value-display" x-text="decal.fadeData?.blendColor || '#ffffff'"></span>
+                            </div>
+                          </div>
+                          <div class="control-row">
+                            <label class="control-label">Fade Start</label>
+                            <div class="control-input-group">
+                              <input type="range" class="form-range" min="0" max="1" step="0.01"
+                                     :value="decal.fadeData?.fadeStart || 0.4" 
+                                     @input="$store.designer.updateFadeProperty('fadeStart', parseFloat($event.target.value))">
+                              <span class="value-display" x-text="`${Math.round((decal.fadeData?.fadeStart || 0.4) * 100)}%`"></span>
+                            </div>
+                          </div>
+                          <div class="control-row">
+                            <label class="control-label">Mix Ratio</label>
+                            <div class="control-input-group">
+                              <input type="range" class="form-range" min="0" max="1" step="0.01"
+                                     :value="decal.fadeData?.mixRatio || 0.5" 
+                                     @input="$store.designer.updateFadeProperty('mixRatio', parseFloat($event.target.value))">
+                              <span class="value-display" x-text="`${Math.round((decal.fadeData?.mixRatio || 0.5) * 100)}%`"></span>
+                            </div>
+                          </div>
+                          <div class="control-row">
+                            <label class="control-label">Direction</label>
+                            <div class="control-input-group">
+                              <select class="form-select form-select-sm" 
+                                      @change="$store.designer.updateFadeProperty('direction', $event.target.value)">
+                                <option value="Vertical" :selected="(decal.fadeData?.direction || 'Vertical') === 'Vertical'">Vertical</option>
+                                <option value="Horizontal" :selected="decal.fadeData?.direction === 'Horizontal'">Horizontal</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Image Section -->
+                      <div class="decal-edit-section" x-show="decal.type === 'image'">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-image me-2"></i>Image
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="control-row">
+                            <div class="control-input-group" style="width: 100%;">
+                              <div class="image-thumbnail-container" 
+                                   @click="$store.designer.replaceImageDecal()">
+                                <img :src="decal.imageUrl || ''" 
+                                     alt="Current Image" 
+                                     style="width: 100%; height: 80px; object-fit: contain; border-radius: 4px; background: #fff;">
+                                <div style="margin-top: 6px; text-align: center;">
+                                  <small style="color: #6b7280; font-size: 11px;">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Click to replace
+                                  </small>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Common controls for all decal types -->
+                      <div class="decal-edit-section">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-arrows-move me-2"></i>Position
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="control-row">
+                            <label class="control-label">X Position</label>
+                            <div class="control-input-group">
+                              <input type="range" class="form-range" min="-0.3" max="1.3" step="0.01"
+                                     :value="decal.position.x"
+                                     @input="$store.designer.updateDecalPosition('x', parseFloat($event.target.value))">
+                              <span class="value-display" x-text="`${Math.round(decal.position.x * 100)}%`"></span>
+                            </div>
+                          </div>
+                          <div class="control-row">
+                            <label class="control-label">Y Position</label>
+                            <div class="control-input-group">
+                              <input type="range" class="form-range" min="-0.3" max="1.3" step="0.01"
+                                     :value="decal.position.y"
+                                     @input="$store.designer.updateDecalPosition('y', parseFloat($event.target.value))">
+                              <span class="value-display" x-text="`${Math.round(decal.position.y * 100)}%`"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="decal-edit-section">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-aspect-ratio me-2"></i>Size & Rotation
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="control-row">
+                            <label class="control-label">Size</label>
+                            <div class="control-input-group">
+                              <input type="range" class="form-range" min="0.1" max="1.3" step="0.01"
+                                     :value="decal.size.x"
+                                     @input="$store.designer.updateDecalSize(parseFloat($event.target.value))">
+                              <span class="value-display" x-text="`${Math.round(decal.size.x * 100)}%`"></span>
+                            </div>
+                          </div>
+                          <div class="control-row">
+                            <label class="control-label">Rotation</label>
+                            <div class="control-input-group">
+                              <input type="range" class="form-range" min="-180" max="180" step="1"
+                                     :value="decal.rotation"
+                                     @input="$store.designer.updateDecalRotation(parseInt($event.target.value))">
+                              <span class="value-display" x-text="`${decal.rotation}°`"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="decal-edit-section">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-transparency me-2"></i>Appearance
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="control-row">
+                            <label class="control-label">Opacity</label>
+                            <div class="control-input-group">
+                              <input type="range" class="form-range" min="0" max="1" step="0.01"
+                                     :value="decal.opacity"
+                                     @input="$store.designer.updateDecalOpacity(parseFloat($event.target.value))">
+                              <span class="value-display" x-text="`${Math.round(decal.opacity * 100)}%`"></span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="decal-edit-section">
+                        <h6 class="decal-edit-section-title">
+                          <i class="bi bi-symmetry-horizontal me-2"></i>Transform
+                        </h6>
+                        <div class="decal-control-group">
+                          <div class="flip-controls">
+                            <button 
+                              class="btn btn-flip"
+                              :class="decal.flipX ? 'btn-primary border-primary' : 'btn-outline-secondary'"
+                              @click="$store.designer.toggleDecalFlip('x')"
+                            >
+                              <i class="bi bi-arrow-left-right"></i>
+                              <span style="font-size: 10px;">Flip Horizontal</span>
+                            </button>
+                            <button 
+                              class="btn btn-flip"
+                              :class="decal.flipY ? 'btn-primary border-primary' : 'btn-outline-secondary'"
+                              @click="$store.designer.toggleDecalFlip('y')"
+                            >
+                              <i class="bi bi-arrow-down-up"></i>
+                              <span style="font-size: 10px;">Flip Vertical</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                  </div>
+                </div>
+              </div>
+            </template>
             </div>
           </div>
 

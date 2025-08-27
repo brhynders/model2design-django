@@ -5,14 +5,18 @@
 
 // Debug logging
 const DEBUG = true;
-const debugLog = DEBUG ? console.log : () => { };
-const debugWarn = DEBUG ? console.warn : () => { };
-const debugError = DEBUG ? console.error : () => { };
+const debugLog = DEBUG ? console.log : () => {};
+const debugWarn = DEBUG ? console.warn : () => {};
+const debugError = DEBUG ? console.error : () => {};
 
 // Three.js variables (global for integration)
 let scene, camera, renderer, controls, model, mixer;
 let gltfLoader, textureLoader, rgbeLoader, pmremGenerator;
 let raycaster, mouse;
+
+// Reusable canvas elements for performance optimization
+let textCanvas = null;
+let fadeCanvas = null;
 
 // State management with Alpine stores
 document.addEventListener("alpine:init", () => {
@@ -21,6 +25,7 @@ document.addEventListener("alpine:init", () => {
     // Loading states
     isLoading: true,
     isAddingImage: false,
+    isSavingDesign: false,
     loadingStates: {
       model: false,
       design: false,
@@ -32,6 +37,8 @@ document.addEventListener("alpine:init", () => {
     layers: {},
     decals: [],
     selectedDecal: null,
+    replacingDecalId: null,
+    isDecalEditMode: false,
 
     // Product data
     product: null,
@@ -126,6 +133,10 @@ document.addEventListener("alpine:init", () => {
       if (this.layers[layerId]) {
         this.currentLayer = layerId;
         this.selectedDecal = null;
+        // Exit decal edit mode when switching layers
+        if (this.isDecalEditMode) {
+          this.isDecalEditMode = false;
+        }
         debugLog(`Switched to layer: ${layerId}`);
       }
     },
@@ -301,7 +312,9 @@ document.addEventListener("alpine:init", () => {
 
     // Generate unique ID for decals
     generateId() {
-      return 'decal_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+      return (
+        "decal_" + Date.now() + "_" + Math.random().toString(36).slice(2, 11)
+      );
     },
 
     // Check if max decals limit reached (14 decals per layer)
@@ -313,7 +326,7 @@ document.addEventListener("alpine:init", () => {
     // Check if current layer can add decals
     canAddDecals() {
       const layer = this.layers[this.currentLayer];
-      return layer && layer.meshSettings && layer.meshSettings.canAddImages;
+      return layer && layer.settings && layer.settings.canAddImages;
     },
 
     // Add image decal - opens image bank modal
@@ -331,12 +344,16 @@ document.addEventListener("alpine:init", () => {
 
       // Check if max decals limit reached
       if (this.isMaxDecalsReached()) {
-        alert(`Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`);
+        alert(
+          `Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`
+        );
         return;
       }
 
       // Open image bank modal
-      const imageModal = new bootstrap.Modal(document.getElementById('imageBankModal'));
+      const imageModal = new bootstrap.Modal(
+        document.getElementById("imageBankModal")
+      );
       imageModal.show();
       debugLog("Image bank modal opened for adding decal");
     },
@@ -356,26 +373,35 @@ document.addEventListener("alpine:init", () => {
 
       // Check if max decals limit reached
       if (this.isMaxDecalsReached()) {
-        alert(`Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`);
+        alert(
+          `Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`
+        );
         return;
       }
 
       // Default text values
-      const text = 'Sample Text';
-      const font = 'Roboto';
-      const color = '#000000';
+      const text = "Sample Text";
+      const font = "Roboto";
+      const color = "#000000";
       const letterSpacing = 0;
       const borderWidth = 0;
-      const borderColor = '#000000';
+      const borderColor = "#000000";
 
       // Create text texture
-      const texture = this.createTextTexture(text, font, color, letterSpacing, borderWidth, borderColor);
+      const texture = this.createTextTexture(
+        text,
+        font,
+        color,
+        letterSpacing,
+        borderWidth,
+        borderColor
+      );
 
       // Create text decal with default values
       const decal = {
         id: this.generateId(),
         name: text,
-        type: 'text',
+        type: "text",
         text: text,
         font: font,
         color: color,
@@ -397,8 +423,8 @@ document.addEventListener("alpine:init", () => {
           color: color,
           letterSpacing: letterSpacing,
           borderWidth: borderWidth,
-          borderColor: borderColor
-        }
+          borderColor: borderColor,
+        },
       };
 
       // Add to current layer
@@ -427,17 +453,19 @@ document.addEventListener("alpine:init", () => {
 
       // Check if max decals limit reached
       if (this.isMaxDecalsReached()) {
-        alert(`Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`);
+        alert(
+          `Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`
+        );
         return;
       }
 
       // Default fade settings
       const fadeData = {
-        baseColor: '#000000',
-        blendColor: '#ffffff',
+        baseColor: "#000000",
+        blendColor: "#ffffff",
         fadeStart: 0.4,
         mixRatio: 0.5,
-        direction: 'Vertical'
+        direction: "Vertical",
       };
 
       // Create fade texture
@@ -455,7 +483,7 @@ document.addEventListener("alpine:init", () => {
         flipX: false,
         flipY: false,
         aspectLocked: true,
-        fadeData: fadeData
+        fadeData: fadeData,
       };
 
       // Add to current layer (insert at beginning for fade effects)
@@ -473,7 +501,9 @@ document.addEventListener("alpine:init", () => {
     createImageDecalFromUrl(imageUrl, imageName, isPattern = false) {
       // Check if max decals limit reached
       if (this.isMaxDecalsReached()) {
-        alert(`Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`);
+        alert(
+          `Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`
+        );
         return;
       }
 
@@ -499,8 +529,8 @@ document.addEventListener("alpine:init", () => {
 
           const decal = {
             id: this.generateId(),
-            name: imageName || 'Image',
-            type: 'image',
+            name: imageName || "Image",
+            type: "image",
             texture: texture,
             imageUrl: imageUrl,
             position: { x: 0.5, y: 0.5 },
@@ -509,7 +539,7 @@ document.addEventListener("alpine:init", () => {
             opacity: 1,
             flipX: false,
             flipY: false,
-            aspectLocked: true
+            aspectLocked: true,
           };
 
           // Add to current layer
@@ -520,7 +550,7 @@ document.addEventListener("alpine:init", () => {
           this.layers[this.currentLayer].decals.push(decal);
           this.selectedDecal = decal.id;
           this.renderLayer();
-          
+
           // Hide loading state
           this.isAddingImage = false;
           debugLog("Image decal added with texture:", decal);
@@ -532,7 +562,7 @@ document.addEventListener("alpine:init", () => {
         (error) => {
           // Error callback
           debugError("Failed to load texture:", imageUrl, error);
-          
+
           // Hide loading state
           this.isAddingImage = false;
           alert("Failed to load image. Please try again.");
@@ -543,7 +573,10 @@ document.addEventListener("alpine:init", () => {
     // Apply optimal texture settings for decals
     applyTextureSettings(texture, isBumpMap = false) {
       texture.generateMipmaps = true;
-      texture.anisotropy = Math.min(16, renderer ? renderer.capabilities.getMaxAnisotropy() : 16);
+      texture.anisotropy = Math.min(
+        16,
+        renderer ? renderer.capabilities.getMaxAnisotropy() : 16
+      );
       texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
 
       // Set flipY to false for all textures (decals and bumpmaps)
@@ -562,21 +595,37 @@ document.addEventListener("alpine:init", () => {
     },
 
     // Create fade texture
-    createFadeTexture({ baseColor = '#000000', blendColor = '#ffffff', fadeStart = 0.4, mixRatio = 0.5, direction = 'Vertical' }) {
-      debugLog('Creating fade texture with options:', { baseColor, blendColor, fadeStart, mixRatio, direction });
+    createFadeTexture({
+      baseColor = "#000000",
+      blendColor = "#ffffff",
+      fadeStart = 0.4,
+      mixRatio = 0.5,
+      direction = "Vertical",
+    }) {
+      debugLog("Creating fade texture with options:", {
+        baseColor,
+        blendColor,
+        fadeStart,
+        mixRatio,
+        direction,
+      });
 
-      // Create canvas
-      const canvas = document.createElement('canvas');
+      // Create or reuse global fade canvas for performance
+      if (!fadeCanvas) {
+        fadeCanvas = document.createElement("canvas");
+      }
+      
+      const canvas = fadeCanvas;
       canvas.width = 2048;
       canvas.height = 2048;
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
 
       // Clear canvas
       ctx.clearRect(0, 0, 2048, 2048);
 
       // Create the gradient
       let gradient;
-      if (direction === 'Vertical') {
+      if (direction === "Vertical") {
         gradient = ctx.createLinearGradient(0, 0, 0, 2048);
       } else {
         gradient = ctx.createLinearGradient(0, 0, 2048, 0);
@@ -595,10 +644,10 @@ document.addEventListener("alpine:init", () => {
 
       // Create texture from canvas
       const texture = new THREE.CanvasTexture(canvas);
-      
+
       // Apply the same texture settings as image textures
       this.applyTextureSettings(texture, false);
-      
+
       return texture;
     },
 
@@ -607,23 +656,27 @@ document.addEventListener("alpine:init", () => {
       // Convert hex to RGB
       const hexToRgb = (hex) => {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-          r: parseInt(result[1], 16),
-          g: parseInt(result[2], 16),
-          b: parseInt(result[3], 16)
-        } : null;
+        return result
+          ? {
+              r: parseInt(result[1], 16),
+              g: parseInt(result[2], 16),
+              b: parseInt(result[3], 16),
+            }
+          : null;
       };
 
       // Convert RGB to hex
       const rgbToHex = (r, g, b) => {
-        return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        return (
+          "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
+        );
       };
 
       const base = hexToRgb(baseColor);
       const blend = hexToRgb(blendColor);
 
       if (!base || !blend) {
-        console.warn('Invalid color format in blendColors');
+        console.warn("Invalid color format in blendColors");
         return baseColor;
       }
 
@@ -636,45 +689,474 @@ document.addEventListener("alpine:init", () => {
     },
 
     // Create text texture
-    createTextTexture(text, font, color, letterSpacing = 0, borderWidth = 0, borderColor = '#000000') {
-      const canvas = document.createElement('canvas');
+    createTextTexture(
+      text,
+      font,
+      color,
+      letterSpacing = 0,
+      borderWidth = 0,
+      borderColor = "#000000"
+    ) {
+      // Create or reuse global text canvas for performance
+      if (!textCanvas) {
+        textCanvas = document.createElement("canvas");
+      }
+      
+      const canvas = textCanvas;
       const canvasSize = 2048;
       canvas.width = canvasSize;
       canvas.height = canvasSize;
 
-      const ctx = canvas.getContext('2d');
+      const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Use placeholder font for now (will be updated when fonts are loaded)
       const fontSize = 200;
       ctx.font = `${fontSize}px ${font}, Arial, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
 
       const centerX = canvas.width / 2;
       const centerY = canvas.height / 2;
 
-      // Draw border if specified
-      if (borderWidth > 0) {
-        ctx.strokeStyle = borderColor;
-        ctx.lineWidth = borderWidth * 2;
-        ctx.strokeText(text, centerX, centerY);
+      // Apply letter spacing if needed
+      if (letterSpacing !== 0) {
+        // Draw text with letter spacing character by character
+        const chars = text.split('');
+        const totalExtraSpacing = letterSpacing * (chars.length - 1);
+        
+        // Measure the text without letter spacing
+        const metrics = ctx.measureText(text);
+        const textWidth = metrics.width;
+        
+        // Calculate starting position to keep text centered
+        let currentX = centerX - (textWidth + totalExtraSpacing) / 2;
+        
+        // Draw each character with spacing
+        chars.forEach((char, index) => {
+          const charMetrics = ctx.measureText(char);
+          const charWidth = charMetrics.width;
+          
+          // Draw border if specified
+          if (borderWidth > 0) {
+            ctx.strokeStyle = borderColor;
+            ctx.lineWidth = borderWidth * 2;
+            ctx.strokeText(char, currentX + charWidth / 2, centerY);
+          }
+          
+          // Draw character
+          ctx.fillStyle = color;
+          ctx.fillText(char, currentX + charWidth / 2, centerY);
+          
+          // Move to next character position
+          currentX += charWidth + letterSpacing;
+        });
+      } else {
+        // Draw text normally without letter spacing
+        // Draw border if specified
+        if (borderWidth > 0) {
+          ctx.strokeStyle = borderColor;
+          ctx.lineWidth = borderWidth * 2;
+          ctx.strokeText(text, centerX, centerY);
+        }
+
+        // Draw text
+        ctx.fillStyle = color;
+        ctx.fillText(text, centerX, centerY);
       }
 
-      // Draw text
-      ctx.fillStyle = color;
-      ctx.fillText(text, centerX, centerY);
-
       const texture = new THREE.CanvasTexture(canvas);
-      
+
       // Apply the same texture settings as image textures
       this.applyTextureSettings(texture, false);
-      
+
       return texture;
     },
 
     selectDecal(decalId) {
       this.selectedDecal = decalId;
+    },
+
+    enterDecalEditMode(decalId) {
+      this.selectedDecal = decalId;
+      this.isDecalEditMode = true;
+      debugLog("Entered decal edit mode for decal:", decalId);
+    },
+
+    exitDecalEditMode() {
+      this.isDecalEditMode = false;
+      this.selectedDecal = null;
+      debugLog("Exited decal edit mode");
+    },
+
+    getSelectedDecal() {
+      if (!this.selectedDecal || !this.currentLayer) return null;
+      const layer = this.layers[this.currentLayer];
+      if (!layer || !layer.decals) return null;
+      return layer.decals.find(d => d.id === this.selectedDecal);
+    },
+
+    updateDecalPosition(axis, value) {
+      const decal = this.getSelectedDecal();
+      if (!decal) return;
+      
+      decal.position[axis] = value;
+      this.renderLayer();
+    },
+
+    updateDecalSize(value) {
+      const decal = this.getSelectedDecal();
+      if (!decal) return;
+      
+      // Maintain aspect ratio if needed
+      const oldSize = decal.size.x;
+      decal.size.x = value;
+      
+      if (decal.aspectLocked) {
+        // Adjust Y size proportionally
+        const ratio = decal.size.y / oldSize;
+        decal.size.y = value * ratio;
+      } else {
+        decal.size.y = value;
+      }
+      
+      this.renderLayer();
+    },
+
+    updateDecalRotation(value) {
+      const decal = this.getSelectedDecal();
+      if (!decal) return;
+      
+      decal.rotation = value;
+      this.renderLayer();
+    },
+
+    updateDecalOpacity(value) {
+      const decal = this.getSelectedDecal();
+      if (!decal) return;
+      
+      decal.opacity = value;
+      this.renderLayer();
+    },
+
+    toggleDecalFlip(axis) {
+      const decal = this.getSelectedDecal();
+      if (!decal) return;
+      
+      if (axis === 'x') {
+        decal.flipX = !decal.flipX;
+      } else if (axis === 'y') {
+        decal.flipY = !decal.flipY;
+      }
+      
+      this.renderLayer();
+    },
+
+    duplicateDecal(decalId) {
+      if (!this.currentLayer) return;
+      
+      const layer = this.layers[this.currentLayer];
+      const originalDecal = layer.decals.find(d => d.id === decalId);
+      if (!originalDecal) return;
+
+      // Check if max decals limit reached
+      if (this.isMaxDecalsReached()) {
+        alert(`Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`);
+        return;
+      }
+
+      // Create a deep copy of the decal
+      const newDecal = {
+        ...originalDecal,
+        id: this.generateId(),
+        name: originalDecal.name + ' Copy',
+        position: { ...originalDecal.position },
+        size: { ...originalDecal.size }
+      };
+
+      layer.decals.push(newDecal);
+      this.selectedDecal = newDecal.id;
+      this.renderLayer();
+      
+      debugLog("Decal duplicated:", newDecal);
+    },
+
+    updateTextProperty(property, value) {
+      const decal = this.getSelectedDecal();
+      if (!decal || decal.type !== 'text') return;
+      
+      // Update the property
+      decal[property] = value;
+      
+      // Update decal name when text changes
+      if (property === 'text') {
+        decal.name = value || 'Text Decal';
+      }
+      
+      // Also update textData if it exists
+      if (decal.textData) {
+        decal.textData[property] = value;
+      }
+      
+      // Recreate the text texture with new properties
+      const newTexture = this.createTextTexture(
+        decal.text,
+        decal.font,
+        decal.color,
+        decal.letterSpacing || 0,
+        decal.borderWidth || 0,
+        decal.borderColor || '#000000'
+      );
+      
+      // Dispose old texture
+      if (decal.texture) {
+        decal.texture.dispose();
+      }
+      
+      decal.texture = newTexture;
+      this.renderLayer();
+      
+      debugLog(`Updated text decal ${property}:`, value);
+    },
+
+    updateFadeProperty(property, value) {
+      const decal = this.getSelectedDecal();
+      if (!decal || decal.type !== 'fade') return;
+      
+      // Update the fade data
+      if (!decal.fadeData) {
+        decal.fadeData = {};
+      }
+      decal.fadeData[property] = value;
+      
+      // Recreate the fade texture with new properties
+      const newTexture = this.createFadeTexture(decal.fadeData);
+      
+      // Dispose old texture
+      if (decal.texture) {
+        decal.texture.dispose();
+      }
+      
+      decal.texture = newTexture;
+      this.renderLayer();
+      
+      debugLog(`Updated fade decal ${property}:`, value);
+    },
+
+    replaceImageDecal() {
+      const decal = this.getSelectedDecal();
+      if (!decal || decal.type !== 'image') return;
+      
+      // Open image bank modal for replacement
+      const imageModal = new bootstrap.Modal(document.getElementById('imageBankModal'));
+      imageModal.show();
+      
+      // Store that we're replacing a decal
+      this.replacingDecalId = decal.id;
+      
+      debugLog("Opening image bank to replace decal:", decal.id);
+    },
+
+    getAvailableLayers() {
+      // Get all layers that can accept images (excluding current layer)
+      const availableLayers = {};
+      Object.keys(this.layers).forEach(layerName => {
+        const layer = this.layers[layerName];
+        if (layer.settings?.canAddImages && layerName !== this.currentLayer) {
+          availableLayers[layerName] = layer;
+        }
+      });
+      return availableLayers;
+    },
+
+    formatLayerName(layerName) {
+      // Format layer name for display (e.g., "front_message" -> "Front Message")
+      return layerName
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    },
+
+    moveDecalToLayer(decalId, targetLayerName) {
+      const currentLayerObj = this.layers[this.currentLayer];
+      const targetLayer = this.layers[targetLayerName];
+      
+      if (!currentLayerObj || !targetLayer) {
+        debugError("Invalid layers for move operation");
+        return;
+      }
+      
+      const decal = currentLayerObj.decals?.find(d => d.id === decalId);
+      if (!decal) {
+        debugError("Decal not found:", decalId);
+        return;
+      }
+      
+      // Check if target layer has reached max decals limit
+      if (targetLayer.decals && targetLayer.decals.length >= 14) {
+        alert(`Maximum elements reached for ${this.formatLayerName(targetLayerName)}. You can have up to 14 elements per layer.`);
+        return;
+      }
+      
+      // Remove from current layer
+      currentLayerObj.decals = currentLayerObj.decals.filter(d => d.id !== decalId);
+      
+      // Add to target layer
+      if (!targetLayer.decals) {
+        targetLayer.decals = [];
+      }
+      targetLayer.decals.push(decal);
+      
+      // Exit decal edit mode and clear selection since decal is moved
+      if (this.selectedDecal === decalId) {
+        this.selectedDecal = null;
+        this.isDecalEditMode = false;
+      }
+      
+      // Re-render both layers
+      this.renderLayer();
+      const prevLayer = this.currentLayer;
+      this.currentLayer = targetLayerName;
+      this.renderLayer();
+      this.currentLayer = prevLayer;
+      
+      debugLog(`Moved decal ${decalId} to ${targetLayerName}`);
+    },
+
+    copyDecalToLayer(decalId, targetLayerName) {
+      const currentLayerObj = this.layers[this.currentLayer];
+      const targetLayer = this.layers[targetLayerName];
+      
+      if (!currentLayerObj || !targetLayer) {
+        debugError("Invalid layers for copy operation");
+        return;
+      }
+      
+      const decal = currentLayerObj.decals?.find(d => d.id === decalId);
+      if (!decal) {
+        debugError("Decal not found:", decalId);
+        return;
+      }
+      
+      // Check if target layer has reached max decals limit
+      if (targetLayer.decals && targetLayer.decals.length >= 14) {
+        alert(`Maximum elements reached for ${this.formatLayerName(targetLayerName)}. You can have up to 14 elements per layer.`);
+        return;
+      }
+      
+      // Create a copy of the decal with new ID
+      const newDecal = {
+        ...JSON.parse(JSON.stringify(decal)), // Deep clone
+        id: this.generateId()
+      };
+      
+      // If it's a texture-based decal, we need to copy the texture reference
+      if (decal.texture) {
+        newDecal.texture = decal.texture; // Share the same texture object
+      }
+      
+      // Add to target layer
+      if (!targetLayer.decals) {
+        targetLayer.decals = [];
+      }
+      targetLayer.decals.push(newDecal);
+      
+      // Exit decal edit mode after copying for cleaner UX
+      if (this.selectedDecal === decalId) {
+        this.selectedDecal = null;
+        this.isDecalEditMode = false;
+      }
+      
+      // Re-render target layer
+      const prevLayer = this.currentLayer;
+      this.currentLayer = targetLayerName;
+      this.renderLayer();
+      this.currentLayer = prevLayer;
+      
+      debugLog(`Copied decal ${decalId} to ${targetLayerName}`);
+    },
+
+    copyDecalToAllLayers(decalId) {
+      const currentLayerObj = this.layers[this.currentLayer];
+      
+      if (!currentLayerObj) {
+        debugError("Current layer not found");
+        return;
+      }
+      
+      const decal = currentLayerObj.decals?.find(d => d.id === decalId);
+      if (!decal) {
+        debugError("Decal not found:", decalId);
+        return;
+      }
+      
+      const availableLayers = this.getAvailableLayers();
+      const layerNames = Object.keys(availableLayers);
+      
+      if (layerNames.length === 0) {
+        debugLog("No available layers to copy to");
+        return;
+      }
+      
+      let copiedCount = 0;
+      let skippedLayers = [];
+      
+      // Copy to each available layer
+      layerNames.forEach(layerName => {
+        const targetLayer = availableLayers[layerName];
+        
+        // Check if target layer has reached max decals limit
+        if (targetLayer.decals && targetLayer.decals.length >= 14) {
+          skippedLayers.push(this.formatLayerName(layerName));
+          return;
+        }
+        
+        // Create a copy of the decal with new ID
+        const newDecal = {
+          ...JSON.parse(JSON.stringify(decal)), // Deep clone
+          id: this.generateId()
+        };
+        
+        // If it's a texture-based decal, we need to copy the texture reference
+        if (decal.texture) {
+          newDecal.texture = decal.texture; // Share the same texture object
+        }
+        
+        // Add to target layer
+        if (!targetLayer.decals) {
+          targetLayer.decals = [];
+        }
+        targetLayer.decals.push(newDecal);
+        copiedCount++;
+      });
+      
+      // Always exit decal edit mode after copying to all layers for cleaner UX
+      this.selectedDecal = null;
+      this.isDecalEditMode = false;
+      
+      // Re-render all affected layers
+      const prevLayer = this.currentLayer;
+      layerNames.forEach(layerName => {
+        this.currentLayer = layerName;
+        this.renderLayer();
+      });
+      this.currentLayer = prevLayer;
+      
+      // Show feedback to user
+      let message = `Copied to ${copiedCount} layer${copiedCount !== 1 ? 's' : ''}`;
+      if (skippedLayers.length > 0) {
+        message += `\n\nSkipped layers (14 element limit reached): ${skippedLayers.join(', ')}`;
+      }
+      
+      if (copiedCount > 0) {
+        // Use a brief toast-style message instead of alert for better UX
+        console.log(message);
+        debugLog(`Copied decal ${decalId} to ${copiedCount} layers`);
+      }
+      
+      if (skippedLayers.length > 0 && copiedCount === 0) {
+        alert(`Cannot copy to any layers. All available layers have reached the 14 element limit.`);
+      }
     },
 
     deleteDecal(decalId) {
@@ -744,6 +1226,97 @@ document.addEventListener("alpine:init", () => {
           designNameSpan.textContent = trimmedName;
         }
       }
+    },
+
+    async saveDesign() {
+      try {
+        // Show saving overlay
+        this.isSavingDesign = true;
+        
+        // Get session ID for guest users
+        const sessionId = this.getSessionId();
+        
+        // Prepare design data using Alpine.raw to avoid proxy issues
+        const designData = {
+          name: this.designName || 'Untitled Design',
+          product: this.productId,
+          data: Alpine.raw({
+            layers: this.layers,
+            currentLayer: this.currentLayer,
+            productId: this.productId,
+            designName: this.designName
+          }),
+          session_id: sessionId,
+          public: false
+        };
+
+        // Get CSRF token
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+                         document.querySelector('[name="csrfmiddlewaretoken"]')?.value ||
+                         document.querySelector('meta[name="csrf-token"]')?.content ||
+                         this.getCookie('csrftoken');
+        
+        debugLog("Saving design data:", designData);
+        debugLog("CSRF token:", csrfToken);
+
+        // Make POST request to save design
+        const response = await fetch('/designer/save/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+          },
+          body: JSON.stringify(designData)
+        });
+
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || `HTTP error! status: ${response.status}`);
+        }
+        
+        if (result.success) {
+          debugLog("Design saved successfully:", result);
+          alert(result.message || "Design saved successfully!");
+        } else {
+          throw new Error(result.error || 'Failed to save design');
+        }
+
+      } catch (error) {
+        debugError("Failed to save design:", error);
+        alert(`Failed to save design: ${error.message}`);
+      } finally {
+        // Hide saving overlay
+        this.isSavingDesign = false;
+      }
+    },
+
+    getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    },
+
+    getSessionId() {
+      // Get Django session ID from cookies
+      const cookies = document.cookie.split(';');
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'sessionid') {
+          return value;
+        }
+      }
+      // Fallback to a generated session ID if none exists
+      return 'guest_' + Math.random().toString(36).substr(2, 9);
     },
 
     // Three.js integration
@@ -831,7 +1404,7 @@ document.addEventListener("alpine:init", () => {
       // Loaders
       gltfLoader = new THREE.GLTFLoader();
       textureLoader = new THREE.TextureLoader();
-      textureLoader.crossOrigin = 'anonymous'; // Fix CORS issues
+      textureLoader.crossOrigin = "anonymous"; // Fix CORS issues
       rgbeLoader = new THREE.RGBELoader();
 
       // Create PMREM generator for environment maps
@@ -1078,10 +1651,39 @@ document.addEventListener("alpine:init", () => {
 
     async loadFonts() {
       try {
-        if (window.phpData?.fonts) {
-          // Font loading logic here
-          debugLog("Fonts loaded");
+        if (!window.phpData?.fonts) {
+          debugLog("No fonts to load");
+          this.setLoadingState("fonts", true);
+          return;
         }
+
+        debugLog("🔤 Loading fonts:", window.phpData.fonts);
+
+        // Wait for document fonts to be ready first
+        await document.fonts.ready;
+        debugLog("✅ Document fonts ready");
+
+        // Load each font family with multiple weights and sizes for caching
+        const fontPromises = [];
+        for (const font of window.phpData.fonts) {
+          const sizes = [16, 24, 48, 72, 96, 144, 200];
+          const weights = [400, 700];
+          
+          for (const size of sizes) {
+            for (const weight of weights) {
+              fontPromises.push(
+                document.fonts.load(`${weight} ${size}px "${font}"`).catch(() => {
+                  debugWarn(`Failed to load ${font} ${weight} ${size}px`);
+                })
+              );
+            }
+          }
+        }
+
+        // Wait for all font variants to load
+        await Promise.all(fontPromises);
+        debugLog(`✅ All fonts loaded successfully: ${window.phpData.fonts.length} families`);
+        
         this.setLoadingState("fonts", true);
       } catch (error) {
         debugError("Font loading failed:", error);
@@ -1347,19 +1949,25 @@ document.addEventListener("alpine:init", () => {
       let selectedLayer = this.layers[this.currentLayer];
       if (targetLayerId) selectedLayer = this.layers[targetLayerId];
       const currentLayer = Alpine.raw(selectedLayer);
-      console.log(currentLayer)
+      console.log(currentLayer);
 
       const mesh = currentLayer.mesh;
       const allDecals = currentLayer.decals;
 
       // Filter out decals without textures
-      const decals = allDecals.filter(d => d.texture);
+      const decals = allDecals.filter((d) => d.texture);
 
-      debugLog("Rendering layer with", decals.length, "decals using shader (filtered from", allDecals.length, "total)");
+      debugLog(
+        "Rendering layer with",
+        decals.length,
+        "decals using shader (filtered from",
+        allDecals.length,
+        "total)"
+      );
 
       // If no decals with textures, reset material to default
       if (decals.length === 0) {
-        mesh.material.onBeforeCompile = () => { };
+        mesh.material.onBeforeCompile = () => {};
         mesh.material.needsUpdate = true;
         return;
       }
@@ -1373,17 +1981,27 @@ document.addEventListener("alpine:init", () => {
         // Set Uniforms
         shader.uniforms.decalImages = { value: decals.map((d) => d.texture) };
         shader.uniforms.decalPositions = {
-          value: decals.map((d) => new THREE.Vector2(d.position.x, d.position.y)),
+          value: decals.map(
+            (d) => new THREE.Vector2(d.position.x, d.position.y)
+          ),
         };
         shader.uniforms.decalRotations = {
           value: decals.map((d) => (d.rotation * Math.PI) / 180),
         };
         shader.uniforms.decalFlipXs = { value: decals.map((d) => d.flipX) };
         shader.uniforms.decalFlipYs = { value: decals.map((d) => d.flipY) };
-        shader.uniforms.decalOpacities = { value: decals.map((d) => d.opacity) };
+        shader.uniforms.decalOpacities = {
+          value: decals.map((d) => d.opacity),
+        };
         shader.uniforms.decalSizes = {
           value: decals.map((d) => {
-            if (d.aspectLocked && d.texture && d.texture.image && d.texture.image.width && d.texture.image.height) {
+            if (
+              d.aspectLocked &&
+              d.texture &&
+              d.texture.image &&
+              d.texture.image.width &&
+              d.texture.image.height
+            ) {
               return new THREE.Vector2(
                 d.size.x,
                 d.size.x * (d.texture.image.height / d.texture.image.width) // Maintain aspect ratio of image
@@ -1482,7 +2100,7 @@ document.addEventListener("alpine:init", () => {
 
       // Trigger Rerender of Material
       mesh.material.needsUpdate = true;
-    }
+    },
   });
 
   // Image Bank Store - manages image selection modal
@@ -1494,153 +2112,169 @@ document.addEventListener("alpine:init", () => {
     uploadProgress: 0,
     uploadedCount: 0,
     totalToUpload: 0,
-    searchQuery: '',
-    currentCategory: 'all',
+    searchQuery: "",
+    currentCategory: "all",
     categories: [],
-    
+
     init() {
       // Load categories from template data
       this.categories = window.phpData?.imageBank?.categories || [];
     },
-    
-    showToast(message, type = 'info', duration = 5000) {
+
+    showToast(message, type = "info", duration = 5000) {
       // Dispatch custom event to show toast
-      window.dispatchEvent(new CustomEvent('show-toast', {
-        detail: { message, type, duration }
-      }));
+      window.dispatchEvent(
+        new CustomEvent("show-toast", {
+          detail: { message, type, duration },
+        })
+      );
     },
-    
+
     get filteredImages() {
       let filtered = this.images;
-      
+
       // When searching, show all images regardless of category
       if (this.searchQuery && this.searchQuery.trim()) {
         const query = this.searchQuery.toLowerCase().trim();
         // Search across ALL images
-        filtered = this.images.filter(img => 
+        filtered = this.images.filter((img) =>
           img.name.toLowerCase().includes(query)
         );
       } else {
         // When not searching, apply category filter
-        if (this.currentCategory === 'all') {
+        if (this.currentCategory === "all") {
           // Show all images
-        } else if (this.currentCategory === 'my-images') {
+        } else if (this.currentCategory === "my-images") {
           // Show only user uploaded images (DesignImage)
-          filtered = filtered.filter(img => img.source === 'user');
+          filtered = filtered.filter((img) => img.source === "user");
         } else {
           // Show images from specific brand category
-          filtered = filtered.filter(img => img.category_id == this.currentCategory);
+          filtered = filtered.filter(
+            (img) => img.category_id == this.currentCategory
+          );
         }
       }
-      
+
       return filtered;
     },
-    
+
     get categoryTitle() {
       // When searching, always show "Search Results"
       if (this.searchQuery && this.searchQuery.trim()) {
         return `Search Results for "${this.searchQuery}"`;
       }
-      
-      if (this.currentCategory === 'all') return 'All Images';
-      if (this.currentCategory === 'my-images') return 'My Images';
-      
-      const category = this.categories.find(cat => cat.id == this.currentCategory);
-      return category ? category.name : 'All Images';
+
+      if (this.currentCategory === "all") return "All Images";
+      if (this.currentCategory === "my-images") return "My Images";
+
+      const category = this.categories.find(
+        (cat) => cat.id == this.currentCategory
+      );
+      return category ? category.name : "All Images";
     },
-    
+
     async loadImages() {
       this.isLoading = true;
       try {
-        const response = await fetch('/designer/images/');
+        const response = await fetch("/designer/images/");
         const data = await response.json();
         this.images = data.images || [];
       } catch (error) {
-        console.error('Error loading images:', error);
+        console.error("Error loading images:", error);
       } finally {
         this.isLoading = false;
       }
     },
-    
+
     async uploadImage(event) {
       const files = event.target.files;
       if (!files || files.length === 0) return;
-      
+
       const formData = new FormData();
-      
+
       // Add all selected files
       for (let i = 0; i < files.length; i++) {
-        formData.append('images', files[i]);
+        formData.append("images", files[i]);
       }
-      
+
       // Set upload state
       this.isUploading = true;
       this.isLoading = true;
       this.uploadProgress = 0;
       this.uploadedCount = 0;
       this.totalToUpload = files.length;
-      
+
       // Simulate progress during upload
       const progressInterval = setInterval(() => {
         if (this.uploadProgress < 90) {
           this.uploadProgress += Math.random() * 10;
         }
       }, 200);
-      
+
       try {
-        const response = await fetch('/designer/images/upload/', {
-          method: 'POST',
+        const response = await fetch("/designer/images/upload/", {
+          method: "POST",
           body: formData,
           headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-          }
+            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")
+              .value,
+          },
         });
-        
+
         // Clear progress interval
         clearInterval(progressInterval);
         this.uploadProgress = 100;
-        
+
         const result = await response.json();
-        
+
         if (response.ok && result.success) {
           // Add all successfully uploaded images to the beginning of the list
           if (result.images && result.images.length > 0) {
             this.images.unshift(...result.images);
             this.uploadedCount = result.images.length;
-            
+
             // Switch to 'My Images' category to show the uploaded images
-            this.currentCategory = 'my-images';
+            this.currentCategory = "my-images";
           }
-          
+
           // Show success message
           if (result.uploaded_count > 0) {
-            this.showToast(`Successfully uploaded ${result.uploaded_count} image(s)`, 'success');
+            this.showToast(
+              `Successfully uploaded ${result.uploaded_count} image(s)`,
+              "success"
+            );
           }
-          
+
           // Show any errors that occurred
           if (result.errors && result.errors.length > 0) {
-            result.errors.forEach(error => {
-              this.showToast(error, 'error', 8000); // Longer duration for errors
+            result.errors.forEach((error) => {
+              this.showToast(error, "error", 8000); // Longer duration for errors
             });
-            
+
             // If some succeeded and some failed
             if (result.uploaded_count > 0) {
-              this.showToast(`${result.errors.length} image(s) failed to upload`, 'warning');
+              this.showToast(
+                `${result.errors.length} image(s) failed to upload`,
+                "warning"
+              );
             }
           }
-          
-          event.target.value = '';
+
+          event.target.value = "";
         } else {
-          this.showToast(result.error || 'Upload failed', 'error');
+          this.showToast(result.error || "Upload failed", "error");
           if (result.errors && result.errors.length > 0) {
-            result.errors.forEach(error => {
-              this.showToast(error, 'error', 8000);
+            result.errors.forEach((error) => {
+              this.showToast(error, "error", 8000);
             });
           }
         }
       } catch (error) {
-        console.error('Error uploading images:', error);
-        this.showToast('Network error during upload. Please try again.', 'error');
+        console.error("Error uploading images:", error);
+        this.showToast(
+          "Network error during upload. Please try again.",
+          "error"
+        );
         clearInterval(progressInterval);
       } finally {
         // Small delay to show completed state
@@ -1651,74 +2285,121 @@ document.addEventListener("alpine:init", () => {
         }, 1000);
       }
     },
-    
+
     selectImage(image) {
       this.selectedImage = image;
     },
-    
+
     selectCategory(categoryId) {
       this.currentCategory = categoryId;
       this.selectedImage = null;
       // Clear search when selecting a category
-      this.searchQuery = '';
+      this.searchQuery = "";
     },
-    
+
     addToDesign() {
       if (this.selectedImage) {
-        Alpine.store('designer').createImageDecalFromUrl(
-          this.selectedImage.image_url,
-          this.selectedImage.name
-        );
+        const designer = Alpine.store("designer");
         
-        bootstrap.Modal.getInstance(document.getElementById('imageBankModal')).hide();
+        // Check if we're replacing an existing decal
+        if (designer.replacingDecalId) {
+          const layer = designer.layers[designer.currentLayer];
+          const decal = layer.decals.find(d => d.id === designer.replacingDecalId);
+          
+          if (decal && decal.type === 'image') {
+            // Replace the image
+            debugLog("Replacing image for decal:", decal.id);
+            
+            // Load new texture
+            textureLoader.load(
+              this.selectedImage.image_url,
+              (texture) => {
+                // Dispose old texture
+                if (decal.texture) {
+                  decal.texture.dispose();
+                }
+                
+                // Apply texture settings
+                designer.applyTextureSettings(texture);
+                
+                // Update decal
+                decal.texture = texture;
+                decal.imageUrl = this.selectedImage.image_url;
+                decal.name = this.selectedImage.name;
+                
+                designer.renderLayer();
+                debugLog("Image replaced successfully");
+              },
+              undefined,
+              (error) => {
+                debugError("Failed to load replacement image:", error);
+                alert("Failed to load image. Please try again.");
+              }
+            );
+          }
+          
+          // Clear the replacing flag
+          designer.replacingDecalId = null;
+        } else {
+          // Normal add to design
+          designer.createImageDecalFromUrl(
+            this.selectedImage.image_url,
+            this.selectedImage.name
+          );
+        }
+
+        bootstrap.Modal.getInstance(
+          document.getElementById("imageBankModal")
+        ).hide();
         this.selectedImage = null;
       }
     },
-    
+
     formatFileSize(bytes) {
-      if (!bytes) return '';
-      const sizes = ['B', 'KB', 'MB', 'GB'];
+      if (!bytes) return "";
+      const sizes = ["B", "KB", "MB", "GB"];
       const i = Math.floor(Math.log(bytes) / Math.log(1024));
-      return Math.round(bytes / Math.pow(1024, i) * 10) / 10 + ' ' + sizes[i];
+      return Math.round((bytes / Math.pow(1024, i)) * 10) / 10 + " " + sizes[i];
     },
-    
+
     async deleteImage(image) {
-      if (!image || image.source !== 'user') {
-        console.error('Cannot delete this image');
+      if (!image || image.source !== "user") {
+        console.error("Cannot delete this image");
         return;
       }
-      
+
       try {
         const response = await fetch(`/designer/images/delete/${image.id}/`, {
-          method: 'DELETE',
+          method: "DELETE",
           headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            'Content-Type': 'application/json'
-          }
+            "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]")
+              .value,
+            "Content-Type": "application/json",
+          },
         });
-        
+
         const result = await response.json();
-        
+
         if (response.ok && result.success) {
           // Remove the image from the local array
-          const index = this.images.findIndex(img => img.id === image.id);
+          const index = this.images.findIndex((img) => img.id === image.id);
           if (index > -1) {
             this.images.splice(index, 1);
           }
-          
+
           // Clear selection if the deleted image was selected
           if (this.selectedImage && this.selectedImage.id === image.id) {
             this.selectedImage = null;
           }
-          
-          console.log('Image deleted successfully:', result.message);
+
+          console.log("Image deleted successfully:", result.message);
         } else {
-          console.error('Delete failed:', result.error || 'Unknown error');
+          console.error("Delete failed:", result.error || "Unknown error");
         }
       } catch (error) {
-        console.error('Error deleting image:', error);
+        console.error("Error deleting image:", error);
       }
-    }
+    },
   });
 });
 

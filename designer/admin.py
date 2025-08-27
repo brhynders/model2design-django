@@ -4,12 +4,23 @@ from .models import Design, DesignTemplate, DesignShare, DesignImage
 
 @admin.register(Design)
 class DesignAdmin(admin.ModelAdmin):
-    list_display = ['name', 'user', 'brand', 'product', 'public', 'created_at', 'updated_at']
-    list_filter = ['public', 'brand', 'created_at', 'updated_at']
-    search_fields = ['name', 'user__email', 'user__first_name', 'user__last_name']
+    list_display = ['name', 'get_owner', 'product', 'public', 'created_at', 'updated_at']
+    list_filter = ['public', 'created_at', 'updated_at']
+    search_fields = ['name', 'user__email', 'user__first_name', 'user__last_name', 'session_id']
     readonly_fields = ['created_at', 'updated_at']
     date_hierarchy = 'created_at'
     ordering = ['-updated_at']
+    
+    def get_owner(self, obj):
+        """Display owner information (user or guest session)"""
+        if obj.user:
+            return f"User: {obj.user.email}"
+        return f"Guest: {obj.session_id}"
+    get_owner.short_description = 'Owner'
+    
+    def get_queryset(self, request):
+        """Optimize queryset with select_related"""
+        return super().get_queryset(request).select_related('user')
 
 
 @admin.register(DesignTemplate)

@@ -650,3 +650,78 @@ def delete_image_api(request, image_id):
             'success': False,
             'error': str(e)
         }, status=500)
+
+
+@require_http_methods(["POST"])
+def save_design(request):
+    """Save a design (supports both authenticated users and guests)"""
+    try:
+        # Parse JSON data
+        data = json.loads(request.body)
+        
+        # Get design info
+        name = data.get('name', 'Untitled Design')
+        product_id = data.get('product')
+        design_data = data.get('data', {})
+        session_id = data.get('session_id')
+        public = data.get('public', False)
+        
+        # Validate required fields
+        if not name.strip():
+            return JsonResponse({
+                'success': False,
+                'error': 'Design name is required'
+            }, status=400)
+            
+        if not product_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Product ID is required'
+            }, status=400)
+            
+        if not design_data:
+            return JsonResponse({
+                'success': False,
+                'error': 'Design data is required'
+            }, status=400)
+        
+        # Create design instance
+        design = Design(
+            name=name.strip(),
+            product=product_id,
+            data=design_data,
+            public=public
+        )
+        
+        # Set user or session_id
+        if request.user.is_authenticated:
+            design.user = request.user
+        else:
+            # For guest users, use session ID
+            if not session_id:
+                session_id = request.session.session_key
+                if not session_id:
+                    # Create session if it doesn't exist
+                    request.session.save()
+                    session_id = request.session.session_key
+            design.session_id = session_id
+        
+        # Save the design
+        design.save()
+        
+        return JsonResponse({
+            'success': True,
+            'design_id': design.id,
+            'message': f'Design "{name}" saved successfully!'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

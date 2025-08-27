@@ -9,26 +9,54 @@ import os
 User = get_user_model()
 
 
+def design_thumbnail_upload_path(instance, filename):
+    """Generate upload path for design thumbnails"""
+    # Use user_id if available, otherwise session_id
+    user_folder = f"user_{instance.user.id}" if instance.user else f"session_{instance.session_id}"
+    return f"design_thumbnails/{user_folder}/{filename}"
+
+
 class Design(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='designs')
-    brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name='designs')
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='designs',
+        null=True,
+        blank=True,
+        help_text="User who created the design (null for guest users)"
+    )
+    session_id = models.CharField(
+        max_length=40,
+        null=True,
+        blank=True,
+        help_text="Session ID for guest users"
+    )
     name = models.CharField(max_length=255)
     product = models.IntegerField()  # References product ID from data.products.php
     data = models.JSONField()  # Stores the design data
-    thumbnail_front = models.URLField(max_length=500, blank=True, null=True)
-    thumbnail_back = models.URLField(max_length=500, blank=True, null=True)
-    thumbnail_left = models.URLField(max_length=500, blank=True, null=True)
-    thumbnail_right = models.URLField(max_length=500, blank=True, null=True)
+    thumbnail_front = models.ImageField(upload_to=design_thumbnail_upload_path, blank=True, null=True)
+    thumbnail_back = models.ImageField(upload_to=design_thumbnail_upload_path, blank=True, null=True)
+    thumbnail_left = models.ImageField(upload_to=design_thumbnail_upload_path, blank=True, null=True)
+    thumbnail_right = models.ImageField(upload_to=design_thumbnail_upload_path, blank=True, null=True)
     public = models.BooleanField(default=False)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-updated_at']
-        unique_together = [['user', 'brand', 'name']]
+        # Remove brand from unique constraint since we removed brand field
+        unique_together = []
 
     def __str__(self):
-        return f"{self.name} - {self.user.email}"
+        if self.user:
+            return f"{self.name} - {self.user.email}"
+        return f"{self.name} - Guest ({self.session_id[:8]}...)"
+    
+    def get_owner_display(self):
+        """Get display name for the design owner"""
+        if self.user:
+            return self.user.get_full_name() or self.user.email
+        return f"Guest User"
 
 
 class DesignTemplate(models.Model):

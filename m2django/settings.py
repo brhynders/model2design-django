@@ -11,6 +11,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -37,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'storages',  # Add django-storages
     'imagekit',
     'core',
     'accounts',
@@ -174,4 +180,72 @@ Image.MAX_IMAGE_PIXELS = 500000000  # 500 million pixels
 # Maximum file upload size (25MB)
 FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25MB
+
+# =====================================
+# Cloudflare R2 Storage Configuration
+# =====================================
+USE_R2_STORAGE = os.getenv('USE_R2_STORAGE', 'False').lower() == 'true'
+
+# R2 Credentials (from environment variables)
+AWS_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
+
+# R2 Bucket Configuration
+AWS_STORAGE_BUCKET_NAME = os.getenv('R2_BUCKET_NAME', 'your-bucket-name')
+R2_ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID', 'your-account-id')
+AWS_S3_ENDPOINT_URL = f'https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com'
+AWS_S3_REGION_NAME = 'auto'  # R2 uses 'auto' for region
+
+# R2 Settings
+AWS_S3_USE_SSL = True
+AWS_S3_VERIFY = True
+AWS_DEFAULT_ACL = None  # R2 doesn't use ACLs
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',  # 1 day cache for media files
+}
+
+# Optional: Custom domain for R2 (if you've set up a custom domain)
+AWS_S3_CUSTOM_DOMAIN = os.getenv('R2_CUSTOM_DOMAIN', None)
+
+# Storage Backend Configuration
+if USE_R2_STORAGE:
+    # Use R2 for media files
+    DEFAULT_FILE_STORAGE = 'core.storage_backends.R2MediaStorage'
+    STORAGES = {
+        "default": {
+            "BACKEND": "core.storage_backends.R2MediaStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    
+    # ImageKit configuration to use R2
+    IMAGEKIT_DEFAULT_FILE_STORAGE = 'core.storage_backends.R2MediaStorage'
+    IMAGEKIT_SPEC_CACHEFILE_STORAGE = 'core.storage_backends.R2MediaStorage'
+    
+    # Optional: Also use R2 for static files (uncomment if desired)
+    # STATICFILES_STORAGE = 'core.storage_backends.R2StaticStorage'
+    
+    # Media files URL (will be constructed from bucket and endpoint)
+    if AWS_S3_CUSTOM_DOMAIN:
+        MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
+    else:
+        MEDIA_URL = f'{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/media/'
+    
+    print(f"✅ R2 Storage enabled - Bucket: {AWS_STORAGE_BUCKET_NAME}")
+else:
+    # Use local storage (default)
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    # Media files URL for local storage
+    MEDIA_URL = '/media/'
+    print("📁 Using local storage for media files")
 

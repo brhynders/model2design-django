@@ -27,6 +27,58 @@
   <body>
     {% csrf_token %}
     <div id="designer-container" x-data>
+      <!-- Toast Notifications Container -->
+      <div 
+        class="toast-container"
+        x-data="{
+          toasts: [],
+          
+          showToast(message, type = 'info', duration = 5000) {
+            const id = Date.now() + Math.random();
+            const toast = { id, message, type, duration };
+            this.toasts.push(toast);
+            
+            // Auto remove after duration
+            setTimeout(() => this.removeToast(id), duration);
+          },
+          
+          removeToast(id) {
+            const index = this.toasts.findIndex(t => t.id === id);
+            if (index > -1) {
+              this.toasts.splice(index, 1);
+            }
+          }
+        }"
+        @show-toast.window="showToast($event.detail.message, $event.detail.type, $event.detail.duration)"
+        @close-toast="removeToast($event.detail)"
+      >
+        <template x-for="toast in toasts" :key="toast.id">
+          <div 
+            class="toast-notification"
+            :class="`toast-${toast.type}`"
+            x-show="true"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="opacity-0 transform translate-x-full"
+            x-transition:enter-end="opacity-100 transform translate-x-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="opacity-100 transform translate-x-0"
+            x-transition:leave-end="opacity-0 transform translate-x-full"
+          >
+            <div class="toast-content">
+              <div class="toast-icon">
+                <i x-show="toast.type === 'success'" class="bi bi-check-circle-fill"></i>
+                <i x-show="toast.type === 'error'" class="bi bi-exclamation-triangle-fill"></i>
+                <i x-show="toast.type === 'warning'" class="bi bi-exclamation-circle-fill"></i>
+                <i x-show="toast.type === 'info'" class="bi bi-info-circle-fill"></i>
+              </div>
+              <div class="toast-message" x-text="toast.message"></div>
+              <button class="toast-close" @click="$dispatch('close-toast', toast.id)">
+                <i class="bi bi-x"></i>
+              </button>
+            </div>
+          </div>
+        </template>
+      </div>
       <!-- Loading Overlay -->
       <div id="loading-overlay" x-show="$store.designer.isLoading" x-transition>
         <div class="loading-content">
@@ -546,188 +598,45 @@
         class="modal fade image-bank-modal" 
         id="imageBankModal" 
         tabindex="-1"
-        x-data="{
-          images: [],
-          selectedImage: null,
-          isLoading: false,
-          uploadProgress: 0,
-          searchQuery: '',
-          currentCategory: 'all',
-          categories: window.phpData?.imageBank?.categories || [],
-          
-          get filteredImages() {
-            let filtered = this.images;
-            
-            // Filter by category
-            if (this.currentCategory === 'all') {
-              // Show all images
-            } else if (this.currentCategory === 'my-images') {
-              // Show only user uploaded images (DesignImage)
-              filtered = filtered.filter(img => img.source === 'user');
-            } else {
-              // Show images from specific brand category
-              filtered = filtered.filter(img => img.category_id == this.currentCategory);
-            }
-            
-            // Filter by search query
-            if (this.searchQuery) {
-              filtered = filtered.filter(img => 
-                img.name.toLowerCase().includes(this.searchQuery.toLowerCase())
-              );
-            }
-            
-            return filtered;
-          },
-          
-          get categoryTitle() {
-            if (this.currentCategory === 'all') return 'All Images';
-            if (this.currentCategory === 'my-images') return 'My Images';
-            
-            const category = this.categories.find(cat => cat.id == this.currentCategory);
-            return category ? category.name : 'All Images';
-          },
-          
-          async loadImages() {
-            this.isLoading = true;
-            try {
-              const response = await fetch('/designer/images/');
-              const data = await response.json();
-              this.images = data.images || [];
-            } catch (error) {
-              console.error('Error loading images:', error);
-            } finally {
-              this.isLoading = false;
-            }
-          },
-          
-          async uploadImage(event) {
-            const files = event.target.files;
-            if (!files || files.length === 0) return;
-            
-            const formData = new FormData();
-            
-            // Add all selected files
-            for (let i = 0; i < files.length; i++) {
-              formData.append('images', files[i]);
-            }
-            
-            this.isLoading = true;
-            this.uploadProgress = 0;
-            
-            try {
-              const response = await fetch('/designer/images/upload/', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
-              });
-              
-              const result = await response.json();
-              
-              if (response.ok && result.success) {
-                // Add all successfully uploaded images to the beginning of the list
-                if (result.images && result.images.length > 0) {
-                  this.images.unshift(...result.images);
-                  
-                  // Switch to 'My Images' category to show the uploaded images
-                  this.currentCategory = 'my-images';
-                }
-                
-                // Show success message
-                if (result.uploaded_count > 0) {
-                  console.log(`Successfully uploaded ${result.uploaded_count} image(s)`);
-                }
-                
-                // Show any errors that occurred
-                if (result.errors && result.errors.length > 0) {
-                  console.warn('Some uploads failed:', result.errors);
-                  // You could display these errors to the user in a toast/alert
-                }
-                
-                event.target.value = '';
-              } else {
-                console.error('Upload failed:', result.error || 'Unknown error');
-                if (result.errors) {
-                  console.error('Individual errors:', result.errors);
-                }
-              }
-            } catch (error) {
-              console.error('Error uploading images:', error);
-            } finally {
-              this.isLoading = false;
-            }
-          },
-          
-          selectImage(image) {
-            this.selectedImage = image;
-          },
-          
-          selectCategory(categoryId) {
-            this.currentCategory = categoryId;
-            this.selectedImage = null;
-          },
-          
-          addToDesign() {
-            if (this.selectedImage) {
-              $store.designer.createImageDecalFromUrl(
-                this.selectedImage.image_url,
-                this.selectedImage.name
-              );
-              
-              bootstrap.Modal.getInstance(document.getElementById('imageBankModal')).hide();
-              this.selectedImage = null;
-            }
-          },
-
-          formatFileSize(bytes) {
-            if (!bytes) return '';
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(1024));
-            return Math.round(bytes / Math.pow(1024, i) * 10) / 10 + ' ' + sizes[i];
-          },
-          
-          async deleteImage(image) {
-            if (!image || image.source !== 'user') {
-              console.error('Cannot delete this image');
-              return;
-            }
-            
-            try {
-              const response = await fetch(`/designer/images/delete/${image.id}/`, {
-                method: 'DELETE',
-                headers: {
-                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                  'Content-Type': 'application/json'
-                }
-              });
-              
-              const result = await response.json();
-              
-              if (response.ok && result.success) {
-                // Remove the image from the local array
-                const index = this.images.findIndex(img => img.id === image.id);
-                if (index > -1) {
-                  this.images.splice(index, 1);
-                }
-                
-                // Clear selection if the deleted image was selected
-                if (this.selectedImage && this.selectedImage.id === image.id) {
-                  this.selectedImage = null;
-                }
-                
-                console.log('Image deleted successfully:', result.message);
-              } else {
-                console.error('Delete failed:', result.error || 'Unknown error');
-              }
-            } catch (error) {
-              console.error('Error deleting image:', error);
-            }
-          }
-        }"
-        @show.bs.modal="loadImages()"
-        @delete-image.window="deleteImage($event.detail)"
+        x-data
+        @show.bs.modal="$store.imageBank.loadImages()"
+        @delete-image.window="$store.imageBank.deleteImage($event.detail)"
       >
+        <!-- Upload Loading Overlay -->
+        <div 
+          class="upload-loading-overlay"
+          x-show="$store.imageBank.isUploading"
+          x-transition:enter="transition ease-out duration-300"
+          x-transition:enter-start="opacity-0"
+          x-transition:enter-end="opacity-100"
+          x-transition:leave="transition ease-in duration-200"
+          x-transition:leave-start="opacity-100"
+          x-transition:leave-end="opacity-0"
+        >
+          <div class="upload-loading-content">
+            <div class="upload-spinner">
+              <div class="spinner-border text-primary" role="status"></div>
+            </div>
+            <div class="upload-message">
+              <h5>Uploading Images...</h5>
+              <p>Please wait while your images are being uploaded to the cloud.</p>
+              <div class="upload-progress-bar" x-show="$store.imageBank.uploadProgress > 0">
+                <div class="progress">
+                  <div 
+                    class="progress-bar" 
+                    role="progressbar" 
+                    :style="`width: ${$store.imageBank.uploadProgress}%`"
+                    :aria-valuenow="$store.imageBank.uploadProgress"
+                    aria-valuemin="0" 
+                    aria-valuemax="100"
+                  ></div>
+                </div>
+                <small class="progress-text" x-text="`${$store.imageBank.uploadProgress}% complete`"></small>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <div class="modal-dialog modal-xl">
           <div class="modal-content">
             <div class="modal-header py-3">
@@ -752,10 +661,10 @@
                     x-ref="imageUpload" 
                     accept="image/*" 
                     multiple
-                    @change="uploadImage($event)"
+                    @change="$store.imageBank.uploadImage($event)"
                     style="display: none;"
                   >
-                  <div class="upload-progress" x-show="isLoading">
+                  <div class="upload-progress" x-show="$store.imageBank.isLoading">
                     <div class="progress">
                       <div class="progress-bar" role="progressbar" :style="`width: ${uploadProgress}%`"></div>
                     </div>
@@ -768,41 +677,41 @@
                   <!-- All Images -->
                   <div 
                     class="category-item"
-                    :class="{ active: currentCategory === 'all' }"
-                    @click="selectCategory('all')"
+                    :class="{ active: $store.imageBank.currentCategory === 'all' && !$store.imageBank.searchQuery, 'opacity-50': $store.imageBank.searchQuery }"
+                    @click="$store.imageBank.selectCategory('all')"
                   >
                     <div class="category-label">
                       <i class="bi bi-images"></i>
                       <span class="category-name">All Images</span>
                     </div>
-                    <span class="category-count" x-text="images.length"></span>
+                    <span class="category-count" x-text="$store.imageBank.images.length"></span>
                   </div>
                   
                   <!-- My Images -->
                   <div 
                     class="category-item"
-                    :class="{ active: currentCategory === 'my-images' }"
-                    @click="selectCategory('my-images')"
+                    :class="{ active: $store.imageBank.currentCategory === 'my-images' && !$store.imageBank.searchQuery, 'opacity-50': $store.imageBank.searchQuery }"
+                    @click="$store.imageBank.selectCategory('my-images')"
                   >
                     <div class="category-label">
                       <i class="bi bi-person"></i>
                       <span class="category-name">My Images</span>
                     </div>
-                    <span class="category-count" x-text="images.filter(img => img.source === 'user').length"></span>
+                    <span class="category-count" x-text="$store.imageBank.images.filter(img => img.source === 'user').length"></span>
                   </div>
                   
                   <!-- Brand Categories -->
-                  <template x-for="category in categories" :key="category.id">
+                  <template x-for="category in $store.imageBank.categories" :key="category.id">
                     <div 
                       class="category-item"
-                      :class="{ active: currentCategory == category.id }"
-                      @click="selectCategory(category.id)"
+                      :class="{ active: $store.imageBank.currentCategory == category.id && !$store.imageBank.searchQuery, 'opacity-50': $store.imageBank.searchQuery }"
+                      @click="$store.imageBank.selectCategory(category.id)"
                     >
                       <div class="category-label">
                         <i class="bi bi-folder"></i>
                         <span class="category-name" x-text="category.name"></span>
                       </div>
-                      <span class="category-count" x-text="images.filter(img => img.category_id == category.id).length"></span>
+                      <span class="category-count" x-text="$store.imageBank.images.filter(img => img.category_id == category.id).length"></span>
                     </div>
                   </template>
                 </div>
@@ -812,7 +721,7 @@
               <div class="image-bank-content">
                 <!-- Header -->
                 <div class="image-bank-header">
-                  <h5 x-text="categoryTitle"></h5>
+                  <h5 x-text="$store.imageBank.categoryTitle"></h5>
                   <div class="d-flex align-items-center gap-2">
                     <button type="button" class="btn btn-outline-primary btn-sm"
                       onclick="window.open('https://remove.bg', '_blank')"
@@ -822,26 +731,30 @@
                     </button>
                     <div class="image-search">
                       <i class="bi bi-search"></i>
-                      <input type="text" class="form-control" placeholder="Search images..."
-                        x-model="searchQuery">
+                      <input 
+                        type="text" 
+                        class="form-control" 
+                        placeholder="Search images..."
+                        x-model="$store.imageBank.searchQuery"
+                      >
                     </div>
                   </div>
                 </div>
 
                 <!-- Image Grid -->
                 <div class="image-grid-container">
-                  <div x-show="isLoading && images.length === 0" class="loading-spinner">
+                  <div x-show="$store.imageBank.isLoading && $store.imageBank.images.length === 0" class="loading-spinner">
                     <div class="spinner-border text-primary" role="status">
                       <span class="visually-hidden">Loading...</span>
                     </div>
                   </div>
 
                   <div class="image-grid">
-                    <template x-for="image in filteredImages" :key="image.id">
+                    <template x-for="image in $store.imageBank.filteredImages" :key="image.id">
                       <div 
                         class="image-item"
-                        :class="{ selected: selectedImage?.id === image.id }"
-                        @click="selectImage(image)"
+                        :class="{ selected: $store.imageBank.selectedImage?.id === image.id }"
+                        @click="$store.imageBank.selectImage(image)"
                       >
                         <div class="image-preview">
                           <img 
@@ -877,7 +790,7 @@
                             </span>
                             <span x-show="image.file_size" class="meta-item">
                               <i class="bi bi-file-earmark"></i>
-                              <span x-text="formatFileSize(image.file_size)"></span>
+                              <span x-text="$store.imageBank.formatFileSize(image.file_size)"></span>
                             </span>
                           </div>
                         </div>
@@ -885,7 +798,7 @@
                     </template>
                   </div>
 
-                  <div x-show="!isLoading && filteredImages.length === 0" class="empty-state">
+                  <div x-show="!$store.imageBank.isLoading && $store.imageBank.filteredImages.length === 0" class="empty-state">
                     <i class="bi bi-images"></i>
                     <h6>No images found</h6>
                     <p>Upload some images to get started or select a different category.</p>
@@ -898,8 +811,8 @@
               <button 
                 type="button" 
                 class="btn btn-primary"
-                @click="addToDesign()"
-                :disabled="!selectedImage"
+                @click="$store.imageBank.addToDesign()"
+                :disabled="!$store.imageBank.selectedImage"
               >
                 <i class="bi bi-check me-1"></i> 
                 Select Image

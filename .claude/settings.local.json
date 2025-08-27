@@ -8,7 +8,11 @@
       "Bash(python manage.py makemigrations:*)",
       "Bash(pip install:*)",
       "Bash(python manage.py:*)",
-      "Bash(source:*)"
+      "Bash(source:*)",
+      "Bash(cat:*)",
+      "Bash(pkill:*)",
+      "Bash(true)",
+      "Bash(python test:*)"
     ],
     "deny": [],
     "ask": [],

@@ -1475,10 +1475,247 @@ document.addEventListener("alpine:init", () => {
       mesh.material.needsUpdate = true;
     }
   });
+
+  // Image Bank Store - manages image selection modal
+  Alpine.store("imageBank", {
+    images: [],
+    selectedImage: null,
+    isLoading: false,
+    isUploading: false,
+    uploadProgress: 0,
+    uploadedCount: 0,
+    totalToUpload: 0,
+    searchQuery: '',
+    currentCategory: 'all',
+    categories: [],
+    
+    init() {
+      // Load categories from template data
+      this.categories = window.phpData?.imageBank?.categories || [];
+    },
+    
+    showToast(message, type = 'info', duration = 5000) {
+      // Dispatch custom event to show toast
+      window.dispatchEvent(new CustomEvent('show-toast', {
+        detail: { message, type, duration }
+      }));
+    },
+    
+    get filteredImages() {
+      let filtered = this.images;
+      
+      // When searching, show all images regardless of category
+      if (this.searchQuery && this.searchQuery.trim()) {
+        const query = this.searchQuery.toLowerCase().trim();
+        // Search across ALL images
+        filtered = this.images.filter(img => 
+          img.name.toLowerCase().includes(query)
+        );
+      } else {
+        // When not searching, apply category filter
+        if (this.currentCategory === 'all') {
+          // Show all images
+        } else if (this.currentCategory === 'my-images') {
+          // Show only user uploaded images (DesignImage)
+          filtered = filtered.filter(img => img.source === 'user');
+        } else {
+          // Show images from specific brand category
+          filtered = filtered.filter(img => img.category_id == this.currentCategory);
+        }
+      }
+      
+      return filtered;
+    },
+    
+    get categoryTitle() {
+      // When searching, always show "Search Results"
+      if (this.searchQuery && this.searchQuery.trim()) {
+        return `Search Results for "${this.searchQuery}"`;
+      }
+      
+      if (this.currentCategory === 'all') return 'All Images';
+      if (this.currentCategory === 'my-images') return 'My Images';
+      
+      const category = this.categories.find(cat => cat.id == this.currentCategory);
+      return category ? category.name : 'All Images';
+    },
+    
+    async loadImages() {
+      this.isLoading = true;
+      try {
+        const response = await fetch('/designer/images/');
+        const data = await response.json();
+        this.images = data.images || [];
+      } catch (error) {
+        console.error('Error loading images:', error);
+      } finally {
+        this.isLoading = false;
+      }
+    },
+    
+    async uploadImage(event) {
+      const files = event.target.files;
+      if (!files || files.length === 0) return;
+      
+      const formData = new FormData();
+      
+      // Add all selected files
+      for (let i = 0; i < files.length; i++) {
+        formData.append('images', files[i]);
+      }
+      
+      // Set upload state
+      this.isUploading = true;
+      this.isLoading = true;
+      this.uploadProgress = 0;
+      this.uploadedCount = 0;
+      this.totalToUpload = files.length;
+      
+      // Simulate progress during upload
+      const progressInterval = setInterval(() => {
+        if (this.uploadProgress < 90) {
+          this.uploadProgress += Math.random() * 10;
+        }
+      }, 200);
+      
+      try {
+        const response = await fetch('/designer/images/upload/', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+          }
+        });
+        
+        // Clear progress interval
+        clearInterval(progressInterval);
+        this.uploadProgress = 100;
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          // Add all successfully uploaded images to the beginning of the list
+          if (result.images && result.images.length > 0) {
+            this.images.unshift(...result.images);
+            this.uploadedCount = result.images.length;
+            
+            // Switch to 'My Images' category to show the uploaded images
+            this.currentCategory = 'my-images';
+          }
+          
+          // Show success message
+          if (result.uploaded_count > 0) {
+            this.showToast(`Successfully uploaded ${result.uploaded_count} image(s)`, 'success');
+          }
+          
+          // Show any errors that occurred
+          if (result.errors && result.errors.length > 0) {
+            result.errors.forEach(error => {
+              this.showToast(error, 'error', 8000); // Longer duration for errors
+            });
+            
+            // If some succeeded and some failed
+            if (result.uploaded_count > 0) {
+              this.showToast(`${result.errors.length} image(s) failed to upload`, 'warning');
+            }
+          }
+          
+          event.target.value = '';
+        } else {
+          this.showToast(result.error || 'Upload failed', 'error');
+          if (result.errors && result.errors.length > 0) {
+            result.errors.forEach(error => {
+              this.showToast(error, 'error', 8000);
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error uploading images:', error);
+        this.showToast('Network error during upload. Please try again.', 'error');
+        clearInterval(progressInterval);
+      } finally {
+        // Small delay to show completed state
+        setTimeout(() => {
+          this.isUploading = false;
+          this.isLoading = false;
+          this.uploadProgress = 0;
+        }, 1000);
+      }
+    },
+    
+    selectImage(image) {
+      this.selectedImage = image;
+    },
+    
+    selectCategory(categoryId) {
+      this.currentCategory = categoryId;
+      this.selectedImage = null;
+      // Clear search when selecting a category
+      this.searchQuery = '';
+    },
+    
+    addToDesign() {
+      if (this.selectedImage) {
+        Alpine.store('designer').createImageDecalFromUrl(
+          this.selectedImage.image_url,
+          this.selectedImage.name
+        );
+        
+        bootstrap.Modal.getInstance(document.getElementById('imageBankModal')).hide();
+        this.selectedImage = null;
+      }
+    },
+    
+    formatFileSize(bytes) {
+      if (!bytes) return '';
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return Math.round(bytes / Math.pow(1024, i) * 10) / 10 + ' ' + sizes[i];
+    },
+    
+    async deleteImage(image) {
+      if (!image || image.source !== 'user') {
+        console.error('Cannot delete this image');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/designer/images/delete/${image.id}/`, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.success) {
+          // Remove the image from the local array
+          const index = this.images.findIndex(img => img.id === image.id);
+          if (index > -1) {
+            this.images.splice(index, 1);
+          }
+          
+          // Clear selection if the deleted image was selected
+          if (this.selectedImage && this.selectedImage.id === image.id) {
+            this.selectedImage = null;
+          }
+          
+          console.log('Image deleted successfully:', result.message);
+        } else {
+          console.error('Delete failed:', result.error || 'Unknown error');
+        }
+      } catch (error) {
+        console.error('Error deleting image:', error);
+      }
+    }
+  });
 });
 
 // Initialize when Alpine is ready
 document.addEventListener("alpine:initialized", () => {
   debugLog("Alpine Designer initialized");
   Alpine.store("designer").init();
+  Alpine.store("imageBank").init();
 });

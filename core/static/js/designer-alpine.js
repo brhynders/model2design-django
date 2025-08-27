@@ -5,9 +5,9 @@
 
 // Debug logging
 const DEBUG = true;
-const debugLog = DEBUG ? console.log : () => {};
-const debugWarn = DEBUG ? console.warn : () => {};
-const debugError = DEBUG ? console.error : () => {};
+const debugLog = DEBUG ? console.log : () => { };
+const debugWarn = DEBUG ? console.warn : () => { };
+const debugError = DEBUG ? console.error : () => { };
 
 // Three.js variables (global for integration)
 let scene, camera, renderer, controls, model, mixer;
@@ -125,7 +125,6 @@ document.addEventListener("alpine:init", () => {
       if (this.layers[layerId]) {
         this.currentLayer = layerId;
         this.selectedDecal = null;
-        this.renderLayer();
         debugLog(`Switched to layer: ${layerId}`);
       }
     },
@@ -142,9 +141,16 @@ document.addEventListener("alpine:init", () => {
 
     // Color management
     setLayerColor(color) {
-      if (this.layers[this.currentLayer]) {
-        this.layers[this.currentLayer].color = color.replace("#", "");
-        this.renderLayer();
+      const layer = this.layers[this.currentLayer];
+      if (layer) {
+        layer.color = color.replace("#", "");
+
+        // Directly update the mesh material color
+        if (layer.mesh && layer.mesh.material) {
+          const colorHex = parseInt(layer.color, 16);
+          layer.mesh.material.color.setHex(colorHex);
+          layer.mesh.material.needsUpdate = true;
+        }
       }
     },
 
@@ -170,11 +176,6 @@ document.addEventListener("alpine:init", () => {
         debugLog(
           `Copied color #${currentLayer.color} to layer ${targetLayerId}`
         );
-
-        // If we switch to the target layer, trigger a re-render
-        if (this.currentLayer === targetLayerId) {
-          this.renderLayer();
-        }
       }
     },
 
@@ -227,8 +228,6 @@ document.addEventListener("alpine:init", () => {
           }
         });
       }
-
-      this.renderLayer();
     },
 
     // Apply bumpmap texture to a layer
@@ -299,20 +298,109 @@ document.addEventListener("alpine:init", () => {
       );
     },
 
-    // Decal management
-    addDecal(type, data) {
+    // Generate unique ID for decals
+    generateId() {
+      return 'decal_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
+    },
+
+    // Check if max decals limit reached (14 decals per layer)
+    isMaxDecalsReached() {
+      const layer = this.layers[this.currentLayer];
+      return layer && layer.decals && layer.decals.length >= 14;
+    },
+
+    // Check if current layer can add decals
+    canAddDecals() {
+      const layer = this.layers[this.currentLayer];
+      return layer && layer.meshSettings && layer.meshSettings.canAddImages;
+    },
+
+    // Add image decal - opens image bank modal
+    addImageDecal() {
+      if (!this.currentLayer) {
+        alert("Please select a layer first");
+        return;
+      }
+
+      // Check if current layer can add images
+      if (!this.canAddDecals()) {
+        alert("This layer does not support adding designs");
+        return;
+      }
+
+      // Check if max decals limit reached
+      if (this.isMaxDecalsReached()) {
+        alert(`Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`);
+        return;
+      }
+
+      // Open image bank modal
+      const imageModal = new bootstrap.Modal(document.getElementById('imageBankModal'));
+      imageModal.show();
+      debugLog("Image bank modal opened for adding decal");
+    },
+
+    // Add text decal with default settings
+    addTextDecal() {
+      if (!this.currentLayer) {
+        alert("Please select a layer first");
+        return;
+      }
+
+      // Check if current layer can add images
+      if (!this.canAddDecals()) {
+        alert("This layer does not support adding designs");
+        return;
+      }
+
+      // Check if max decals limit reached
+      if (this.isMaxDecalsReached()) {
+        alert(`Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`);
+        return;
+      }
+
+      // Default text values
+      const text = 'Sample Text';
+      const font = 'Roboto';
+      const color = '#000000';
+      const letterSpacing = 0;
+      const borderWidth = 0;
+      const borderColor = '#000000';
+
+      // Create text texture
+      const texture = this.createTextTexture(text, font, color, letterSpacing, borderWidth, borderColor);
+
+      // Create text decal with default values
       const decal = {
-        id: Date.now() + Math.random(),
-        type: type,
-        layer: this.currentLayer,
-        x: 0.5,
-        y: 0.5,
-        width: 0.2,
-        height: 0.2,
+        id: this.generateId(),
+        name: text,
+        type: 'text',
+        text: text,
+        font: font,
+        color: color,
+        letterSpacing: letterSpacing,
+        borderWidth: borderWidth,
+        borderColor: borderColor,
+        texture: texture,
+        position: { x: 0.5, y: 0.5 },
+        size: { x: 0.4, y: 0.2 },
         rotation: 0,
-        ...data,
+        opacity: 1,
+        flipX: false,
+        flipY: false,
+        aspectLocked: true,
+        isLoadingFont: true, // Flag to indicate font is still loading
+        textData: {
+          text: text,
+          font: font,
+          color: color,
+          letterSpacing: letterSpacing,
+          borderWidth: borderWidth,
+          borderColor: borderColor
+        }
       };
 
+      // Add to current layer
       if (!this.layers[this.currentLayer].decals) {
         this.layers[this.currentLayer].decals = [];
       }
@@ -320,7 +408,261 @@ document.addEventListener("alpine:init", () => {
       this.layers[this.currentLayer].decals.push(decal);
       this.selectedDecal = decal.id;
       this.renderLayer();
-      debugLog("Added decal:", decal);
+      debugLog("Text decal added:", decal);
+    },
+
+    // Add fade decal with default settings
+    addFadeDecal() {
+      if (!this.currentLayer) {
+        alert("Please select a layer first");
+        return;
+      }
+
+      // Check if current layer can add images
+      if (!this.canAddDecals()) {
+        alert("This layer does not support adding designs");
+        return;
+      }
+
+      // Check if max decals limit reached
+      if (this.isMaxDecalsReached()) {
+        alert(`Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`);
+        return;
+      }
+
+      // Default fade settings
+      const fadeData = {
+        baseColor: '#000000',
+        blendColor: '#ffffff',
+        fadeStart: 0.4,
+        mixRatio: 0.5,
+        direction: 'Vertical'
+      };
+
+      // Create fade texture
+      const texture = this.createFadeTexture(fadeData);
+
+      const decal = {
+        id: this.generateId(),
+        name: "Fade Effect",
+        type: "fade",
+        texture: texture,
+        position: { x: 0.5, y: 0.5 },
+        size: { x: 1.2, y: 1.2 },
+        rotation: 0,
+        opacity: 0.7,
+        flipX: false,
+        flipY: false,
+        aspectLocked: true,
+        fadeData: fadeData
+      };
+
+      // Add to current layer (insert at beginning for fade effects)
+      if (!this.layers[this.currentLayer].decals) {
+        this.layers[this.currentLayer].decals = [];
+      }
+
+      this.layers[this.currentLayer].decals.unshift(decal);
+      this.selectedDecal = decal.id;
+      this.renderLayer();
+      debugLog("Fade decal added:", decal);
+    },
+
+    // Create image decal from selected image (called from image bank)
+    createImageDecalFromUrl(imageUrl, imageName, isPattern = false) {
+      // Check if max decals limit reached
+      if (this.isMaxDecalsReached()) {
+        alert(`Maximum elements reached for ${this.currentLayer}. You can have up to 14 elements per layer.`);
+        return;
+      }
+
+      // Use Three.js TextureLoader
+      if (!textureLoader) {
+        debugError("TextureLoader not initialized");
+        return;
+      }
+
+      // Show loading state (optional)
+      debugLog("Loading texture from:", imageUrl);
+
+      textureLoader.load(
+        imageUrl,
+        (texture) => {
+          // Success - texture loaded
+          // Apply optimal texture settings
+          this.applyTextureSettings(texture);
+
+          // Determine size based on pattern category
+          const size = isPattern ? { x: 1, y: 1 } : { x: 0.3, y: 0.3 };
+
+          const decal = {
+            id: this.generateId(),
+            name: imageName || 'Image',
+            type: 'image',
+            texture: texture,
+            imageUrl: imageUrl,
+            position: { x: 0.5, y: 0.5 },
+            size: size,
+            rotation: 0,
+            opacity: 1,
+            flipX: false,
+            flipY: false,
+            aspectLocked: true
+          };
+
+          // Add to current layer
+          if (!this.layers[this.currentLayer].decals) {
+            this.layers[this.currentLayer].decals = [];
+          }
+
+          this.layers[this.currentLayer].decals.push(decal);
+          this.selectedDecal = decal.id;
+          this.renderLayer();
+          debugLog("Image decal added with texture:", decal);
+        },
+        (progress) => {
+          // Progress callback (optional)
+          debugLog("Loading texture progress:", progress);
+        },
+        (error) => {
+          // Error callback
+          debugError("Failed to load texture:", imageUrl, error);
+          alert("Failed to load image. Please try again.");
+        }
+      );
+    },
+
+    // Apply optimal texture settings for decals
+    applyTextureSettings(texture, isBumpMap = false) {
+      texture.generateMipmaps = true;
+      texture.anisotropy = Math.min(16, renderer ? renderer.capabilities.getMaxAnisotropy() : 16);
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+
+      // Set flipY to false for all textures (decals and bumpmaps)
+      texture.flipY = false;
+
+      // Better filtering
+      if (isBumpMap) {
+        texture.minFilter = THREE.LinearMipMapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+      } else {
+        texture.minFilter = THREE.LinearMipMapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+      }
+
+      texture.needsUpdate = true;
+    },
+
+    // Create fade texture
+    createFadeTexture({ baseColor = '#000000', blendColor = '#ffffff', fadeStart = 0.4, mixRatio = 0.5, direction = 'Vertical' }) {
+      debugLog('Creating fade texture with options:', { baseColor, blendColor, fadeStart, mixRatio, direction });
+
+      // Create canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = 2048;
+      canvas.height = 2048;
+      const ctx = canvas.getContext('2d');
+
+      // Clear canvas
+      ctx.clearRect(0, 0, 2048, 2048);
+
+      // Create the gradient
+      let gradient;
+      if (direction === 'Vertical') {
+        gradient = ctx.createLinearGradient(0, 0, 0, 2048);
+      } else {
+        gradient = ctx.createLinearGradient(0, 0, 2048, 0);
+      }
+
+      // Calculate blended color based on mixRatio
+      const blendedColor = this.blendColors(baseColor, blendColor, mixRatio);
+
+      // Add color stops
+      gradient.addColorStop(fadeStart, baseColor);
+      gradient.addColorStop(1, blendedColor);
+
+      // Fill with gradient
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 2048, 2048);
+
+      // Create texture from canvas
+      const texture = new THREE.CanvasTexture(canvas);
+      
+      // Apply the same texture settings as image textures
+      this.applyTextureSettings(texture, false);
+      
+      return texture;
+    },
+
+    // Blend two colors
+    blendColors(baseColor, blendColor, mixRatio) {
+      // Convert hex to RGB
+      const hexToRgb = (hex) => {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : null;
+      };
+
+      // Convert RGB to hex
+      const rgbToHex = (r, g, b) => {
+        return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+      };
+
+      const base = hexToRgb(baseColor);
+      const blend = hexToRgb(blendColor);
+
+      if (!base || !blend) {
+        console.warn('Invalid color format in blendColors');
+        return baseColor;
+      }
+
+      // Mix colors based on ratio
+      const r = Math.round(base.r * (1 - mixRatio) + blend.r * mixRatio);
+      const g = Math.round(base.g * (1 - mixRatio) + blend.g * mixRatio);
+      const b = Math.round(base.b * (1 - mixRatio) + blend.b * mixRatio);
+
+      return rgbToHex(r, g, b);
+    },
+
+    // Create text texture
+    createTextTexture(text, font, color, letterSpacing = 0, borderWidth = 0, borderColor = '#000000') {
+      const canvas = document.createElement('canvas');
+      const canvasSize = 2048;
+      canvas.width = canvasSize;
+      canvas.height = canvasSize;
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Use placeholder font for now (will be updated when fonts are loaded)
+      const fontSize = 200;
+      ctx.font = `${fontSize}px ${font}, Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      // Draw border if specified
+      if (borderWidth > 0) {
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderWidth * 2;
+        ctx.strokeText(text, centerX, centerY);
+      }
+
+      // Draw text
+      ctx.fillStyle = color;
+      ctx.fillText(text, centerX, centerY);
+
+      const texture = new THREE.CanvasTexture(canvas);
+      
+      // Apply the same texture settings as image textures
+      this.applyTextureSettings(texture, false);
+      
+      return texture;
     },
 
     selectDecal(decalId) {
@@ -350,12 +692,35 @@ document.addEventListener("alpine:init", () => {
 
     clearDesign() {
       Object.keys(this.layers).forEach((layerId) => {
-        this.layers[layerId].decals = [];
-        this.layers[layerId].color = "ffffff";
-        this.layers[layerId].material = "none";
+        const layer = this.layers[layerId];
+
+        // Clear decals
+        layer.decals = [];
+
+        // Reset to initial color (or white as fallback)
+        const initialColor = layer.settings?.initialColor || "ffffff";
+        layer.color = initialColor;
+
+        // Reset material to none
+        layer.material = "none";
+
+        // Directly update mesh material if it exists
+        if (layer.mesh && layer.mesh.material) {
+          // Update color
+          const colorHex = parseInt(initialColor, 16);
+          layer.mesh.material.color.setHex(colorHex);
+
+          // Remove bumpmap material
+          layer.mesh.material.bumpMap = null;
+          layer.mesh.material.bumpScale = 1;
+          layer.mesh.material.roughness = 1;
+          layer.mesh.material.metalness = 0;
+          layer.mesh.material.needsUpdate = true;
+        }
       });
+
       this.selectedDecal = null;
-      this.renderLayer();
+      this.renderLayer(); // Only for decals
       debugLog("Design cleared");
     },
 
@@ -691,21 +1056,15 @@ document.addEventListener("alpine:init", () => {
       debugLog("Layers initialized:", Object.keys(this.layers));
     },
 
-    renderLayer() {
-      const layer = this.layers[this.currentLayer];
-      if (!layer || !layer.mesh) return;
-
-      // Update color
-      const colorHex = parseInt(layer.color, 16);
-      layer.mesh.material.color.setHex(colorHex);
-
-      // Update material/texture
-      // TODO: Implement material switching
-
-      // Render decals
-      // TODO: Implement decal rendering
-
-      debugLog(`Rendered layer: ${this.currentLayer}`);
+    renderAllLayers() {
+      Object.keys(this.layers).forEach((layerId) => {
+        const layer = this.layers[layerId];
+        // Only render layers that can have images/decals
+        if (layer.settings?.canAddImages) {
+          this.renderLayer(layerId);
+        }
+      });
+      debugLog("Rendered all layers with canAddImages");
     },
 
     async loadFonts() {
@@ -962,6 +1321,159 @@ document.addEventListener("alpine:init", () => {
       // TODO: Implement actual saving to backend if needed
       debugLog("Design name updated successfully");
     },
+
+    generateSwitchCases(numDecals) {
+      let switchCases = "";
+      for (let i = 0; i < numDecals; i++) {
+        switchCases += `
+            case ${i}:
+                texColor = texture2D(decalImages[${i}], uv);
+                break;
+        `;
+      }
+      return switchCases;
+    },
+
+    renderLayer(targetLayerId = null) {
+      let selectedLayer = this.layers[this.currentLayer];
+      if (targetLayerId) selectedLayer = this.layers[targetLayerId];
+      const currentLayer = Alpine.raw(selectedLayer);
+      console.log(currentLayer)
+
+      const mesh = currentLayer.mesh;
+      const allDecals = currentLayer.decals;
+
+      // Filter out decals without textures
+      const decals = allDecals.filter(d => d.texture);
+
+      debugLog("Rendering layer with", decals.length, "decals using shader (filtered from", allDecals.length, "total)");
+
+      // If no decals with textures, reset material to default
+      if (decals.length === 0) {
+        mesh.material.onBeforeCompile = () => { };
+        mesh.material.needsUpdate = true;
+        return;
+      }
+
+      // Ensure Shader is not cached
+      mesh.material.customProgramCacheKey = () =>
+        Math.random().toString(36).substring(2, 15);
+
+      // Hook Shader
+      mesh.material.onBeforeCompile = (shader) => {
+        // Set Uniforms
+        shader.uniforms.decalImages = { value: decals.map((d) => d.texture) };
+        shader.uniforms.decalPositions = {
+          value: decals.map((d) => new THREE.Vector2(d.position.x, d.position.y)),
+        };
+        shader.uniforms.decalRotations = {
+          value: decals.map((d) => (d.rotation * Math.PI) / 180),
+        };
+        shader.uniforms.decalFlipXs = { value: decals.map((d) => d.flipX) };
+        shader.uniforms.decalFlipYs = { value: decals.map((d) => d.flipY) };
+        shader.uniforms.decalOpacities = { value: decals.map((d) => d.opacity) };
+        shader.uniforms.decalSizes = {
+          value: decals.map((d) => {
+            if (d.aspectLocked && d.texture && d.texture.image && d.texture.image.width && d.texture.image.height) {
+              return new THREE.Vector2(
+                d.size.x,
+                d.size.x * (d.texture.image.height / d.texture.image.width) // Maintain aspect ratio of image
+              );
+            } else {
+              return new THREE.Vector2(d.size.x, d.size.y);
+            }
+          }),
+        };
+        shader.uniforms.minX = { value: parseFloat(currentLayer.minX) };
+        shader.uniforms.maxX = { value: parseFloat(currentLayer.maxX) };
+        shader.uniforms.minY = { value: parseFloat(currentLayer.minY) };
+        shader.uniforms.maxY = { value: parseFloat(currentLayer.maxY) };
+
+        // Adjust Vertex Shader
+        shader.vertexShader = `
+        ${shader.vertexShader.replace("void main", "void originalMain")}
+        varying vec2 vDecalUv;
+        void main() {
+            vDecalUv = uv;
+            originalMain();
+        }
+        `;
+
+        // Define uniforms/vars in global scope
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "void main()",
+          `
+          varying vec2 vDecalUv;
+          #define MAX_DECALS ${decals.length}
+          #if MAX_DECALS > 0
+              uniform sampler2D decalImages[MAX_DECALS];
+              uniform vec2 decalPositions[MAX_DECALS];
+              uniform vec2 decalSizes[MAX_DECALS];
+              uniform float decalRotations[MAX_DECALS];
+              uniform bool decalFlipXs[MAX_DECALS];
+              uniform bool decalFlipYs[MAX_DECALS];
+              uniform float decalOpacities[MAX_DECALS];
+          #endif
+          uniform float minX;
+          uniform float maxX;
+          uniform float minY;
+          uniform float maxY;
+          void main()
+          `
+        );
+
+        // Replace normal texture mapping with custom one
+        shader.fragmentShader = shader.fragmentShader.replace(
+          "#include <map_fragment>",
+          `
+          #if MAX_DECALS > 0
+              for (int i = 0; i < MAX_DECALS; i++) {
+                  vec2 originalUV = vDecalUv;
+
+                  vec2 rotatedUV = vDecalUv - decalPositions[i]; // Translate to origin
+                  float c = cos(decalRotations[i]);
+                  float s = sin(decalRotations[i]);
+                  rotatedUV = vec2(
+                      rotatedUV.x * c - rotatedUV.y * s,
+                      rotatedUV.x * s + rotatedUV.y * c
+                  );
+                  rotatedUV += decalPositions[i]; // Translate back to original position
+
+                  vec2 uv = (rotatedUV - decalPositions[i]) / decalSizes[i] + 0.5;
+                  
+                  if (decalFlipXs[i]) {
+                    uv.x = 1.0 - uv.x;
+                  }
+                  if (decalFlipYs[i]) {
+                    uv.y = 1.0 - uv.y;
+                  }
+
+                  vec4 texColor = vec4(0.0);
+                  switch(i) {
+                    ${this.generateSwitchCases(decals.length)}
+                  }
+                  if (uv.x >= 0.0 && uv.x <= 1.0 && uv.y >= 0.0 && uv.y <= 1.0 && originalUV.x >= minX && originalUV.x <= maxX && originalUV.y >= minY && originalUV.y <= maxY && gl_FrontFacing) {
+                    float existingAlpha = diffuseColor.a;
+                    float finalAlpha = existingAlpha * (1.0 - texColor.a * decalOpacities[i]) + texColor.a * decalOpacities[i];
+
+                      // Check if the final alpha is less than a very small threshold, treat it as fully transparent
+                      if (finalAlpha < 0.001) {
+                          diffuseColor.a = 0.0;
+                      } else {
+                          // Blend the colors using the calculated alpha value
+                          diffuseColor.rgb = (texColor.rgb * texColor.a * decalOpacities[i] + diffuseColor.rgb * existingAlpha * (1.0 - texColor.a * decalOpacities[i])) / finalAlpha;
+                          diffuseColor.a = finalAlpha;
+                      }
+                  }
+              }
+          #endif
+          `
+        );
+      };
+
+      // Trigger Rerender of Material
+      mesh.material.needsUpdate = true;
+    }
   });
 });
 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Design, DesignTemplate, DesignShare
+from .models import Design, DesignTemplate, DesignShare, DesignImage
 
 
 @admin.register(Design)
@@ -28,3 +28,24 @@ class DesignShareAdmin(admin.ModelAdmin):
     search_fields = ['design__name', 'share_code']
     readonly_fields = ['created_at']
     ordering = ['-created_at']
+
+
+@admin.register(DesignImage)
+class DesignImageAdmin(admin.ModelAdmin):
+    list_display = ['name', 'get_owner', 'filetype', 'file_size', 'width', 'height', 'created_at']
+    list_filter = ['filetype', 'created_at', 'updated_at']
+    search_fields = ['name', 'user__email', 'session_id']
+    readonly_fields = ['file_size', 'width', 'height', 'filetype', 'created_at', 'updated_at', 'thumbnail']
+    date_hierarchy = 'created_at'
+    ordering = ['-created_at']
+    
+    def get_owner(self, obj):
+        """Display owner information (user or guest session)"""
+        if obj.user:
+            return f"User: {obj.user.email}"
+        return f"Guest: {obj.session_id}"
+    get_owner.short_description = 'Owner'
+    
+    def get_queryset(self, request):
+        """Optimize queryset with select_related"""
+        return super().get_queryset(request).select_related('user')

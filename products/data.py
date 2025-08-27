@@ -108,7 +108,7 @@ products = [
                 'bumpMap': False,
                 'linkedColors': [],
                 'linkedBumpmaps': [],
-                'canSelect': False,
+                'canSelect': True,
                 'canAddImages': False,
                 'canChangeColor': True,
                 'canChangeBumpmap': False,

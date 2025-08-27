@@ -6,10 +6,11 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib import messages
 from django.db import IntegrityError
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 import json
 import uuid
-from .models import Design, DesignTemplate, DesignShare
-from brands.models import Brand, BrandBackground
+from .models import Design, DesignTemplate, DesignShare, DesignImage
+from brands.models import Brand, BrandBackground, BrandImageCategory, BrandImage
 from products.models import Product
 from products.data import products as PRODUCTS_DATA, bumpmap_textures as BUMPMAPS_DATA, fonts as FONTS_DATA, get_product_by_id
 
@@ -179,6 +180,20 @@ def designer_view(request):
             for bg in backgrounds
         ]
     
+    # Get image categories for image bank
+    image_categories = []
+    if current_brand:
+        categories = BrandImageCategory.objects.filter(brand=current_brand).order_by('name')
+        image_categories = [
+            {
+                'id': cat.id,
+                'name': cat.name,
+                'slug': cat.slug,
+                'description': cat.description,
+            }
+            for cat in categories
+        ]
+    
     context = {
         'page_title': 'Designer',
         'current_brand': current_brand,
@@ -195,6 +210,7 @@ def designer_view(request):
         'fonts': json.dumps(FONTS_DATA),
         'fonts_list': FONTS_DATA,  # Pass the raw list for template iteration
         'brand_backgrounds': json.dumps(brand_backgrounds),
+        'image_categories': json.dumps(image_categories),
     }
     
     return render(request, 'designer/designer.html', context)
@@ -380,3 +396,257 @@ def select_template(request):
     }
     
     return render(request, 'designer/select_template.html', context)
+
+
+@require_http_methods(["GET"])
+def user_images_api(request):
+    """API endpoint to get user's design images and brand images"""
+    try:
+        image_data = []
+        
+        # Get user uploaded images (DesignImage)
+        if request.user.is_authenticated:
+            user_images = DesignImage.objects.filter(user=request.user)
+        else:
+            # For guest users, use session ID
+            session_key = request.session.session_key
+            if not session_key:
+                # Create session if it doesn't exist
+                request.session.create()
+                session_key = request.session.session_key
+            
+            user_images = DesignImage.objects.filter(session_id=session_key)
+        
+        # Add user uploaded images
+        for img in user_images:
+            image_data.append({
+                'id': f'user_{img.id}',
+                'name': img.name,
+                'image_url': img.image.url,
+                'thumbnail_url': img.thumbnail.url if img.thumbnail else img.image.url,
+                'width': img.width,
+                'height': img.height,
+                'file_size': img.file_size,
+                'filetype': img.filetype,
+                'created_at': img.created_at.isoformat(),
+                'source': 'user',
+                'category_id': None
+            })
+        
+        # Get brand images
+        current_brand = request.brand
+        if current_brand:
+            brand_images = BrandImage.objects.filter(brand=current_brand).select_related('category')
+            
+            for img in brand_images:
+                image_data.append({
+                    'id': f'brand_{img.id}',
+                    'name': img.name,
+                    'image_url': img.image_url,
+                    'thumbnail_url': img.thumbnail_url or img.image_url,
+                    'width': img.width,
+                    'height': img.height,
+                    'file_size': img.file_size,
+                    'filetype': 'jpg',  # Default for brand images
+                    'created_at': img.created_at.isoformat(),
+                    'source': 'brand',
+                    'category_id': img.category.id if img.category else None
+                })
+        
+        return JsonResponse({
+            'success': True,
+            'images': image_data
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+def upload_image_api(request):
+    """API endpoint to upload new design images (supports multiple files)"""
+    try:
+        # Check if image files are provided
+        if 'images' not in request.FILES and 'image' not in request.FILES:
+            return JsonResponse({
+                'success': False,
+                'error': 'No image files provided'
+            }, status=400)
+        
+        # Get image files - support both 'images' (multiple) and 'image' (single) keys
+        image_files = []
+        if 'images' in request.FILES:
+            image_files = request.FILES.getlist('images')
+        elif 'image' in request.FILES:
+            image_files = [request.FILES['image']]
+        
+        if not image_files:
+            return JsonResponse({
+                'success': False,
+                'error': 'No image files provided'
+            }, status=400)
+        
+        # Validate file types and sizes
+        allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/avif']
+        max_size = 10 * 1024 * 1024  # 10MB in bytes
+        
+        uploaded_images = []
+        errors = []
+        
+        # Get session info once
+        session_key = None
+        if not request.user.is_authenticated:
+            session_key = request.session.session_key
+            if not session_key:
+                request.session.create()
+                session_key = request.session.session_key
+        
+        for image_file in image_files:
+            try:
+                # Validate file type
+                if image_file.content_type not in allowed_types:
+                    errors.append(f'{image_file.name}: Invalid file type. Please upload a JPEG, PNG, GIF, or WebP image.')
+                    continue
+                
+                # Validate file size
+                if image_file.size > max_size:
+                    errors.append(f'{image_file.name}: File too large. Maximum size is 10MB.')
+                    continue
+                
+                # Additional check for extremely large images
+                from PIL import Image as PILImage
+                try:
+                    # Open the image to check dimensions
+                    img = PILImage.open(image_file)
+                    width, height = img.size
+                    total_pixels = width * height
+                    
+                    # Check if image has too many pixels (over 100 megapixels as a reasonable limit)
+                    if total_pixels > 100000000:  # 100 million pixels
+                        errors.append(f'{image_file.name}: Image resolution too high ({width}x{height}). Please resize to under 100 megapixels.')
+                        continue
+                    
+                    # Reset file pointer after PIL opens it
+                    image_file.seek(0)
+                except Exception as pil_error:
+                    errors.append(f'{image_file.name}: Could not process image. It may be corrupted or too large.')
+                    continue
+                
+                # Create DesignImage instance
+                name = request.POST.get('name', image_file.name)
+                design_image = DesignImage(
+                    name=name,
+                    image=image_file
+                )
+                
+                # Set user or session_id
+                if request.user.is_authenticated:
+                    design_image.user = request.user
+                else:
+                    design_image.session_id = session_key
+                
+                # Validate and save
+                design_image.full_clean()
+                design_image.save()
+                
+                # Add to successful uploads
+                uploaded_images.append({
+                    'id': f'user_{design_image.id}',
+                    'name': design_image.name,
+                    'image_url': design_image.image.url,
+                    'thumbnail_url': design_image.thumbnail.url if design_image.thumbnail else design_image.image.url,
+                    'width': design_image.width,
+                    'height': design_image.height,
+                    'file_size': design_image.file_size,
+                    'filetype': design_image.filetype,
+                    'created_at': design_image.created_at.isoformat(),
+                    'source': 'user',
+                    'category_id': None
+                })
+                
+            except ValidationError as e:
+                errors.append(f'{image_file.name}: {str(e)}')
+            except Exception as e:
+                errors.append(f'{image_file.name}: {str(e)}')
+        
+        # Return results
+        if uploaded_images:
+            response_data = {
+                'success': True,
+                'images': uploaded_images,
+                'uploaded_count': len(uploaded_images)
+            }
+            if errors:
+                response_data['errors'] = errors
+                response_data['error_count'] = len(errors)
+            return JsonResponse(response_data)
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'No images could be uploaded',
+                'errors': errors
+            }, status=400)
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@require_http_methods(["DELETE"])
+def delete_image_api(request, image_id):
+    """API endpoint to delete a user's design image"""
+    try:
+        # Extract the actual ID from the prefixed ID (e.g., "user_123" -> 123)
+        if image_id.startswith('user_'):
+            actual_id = image_id.replace('user_', '')
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid image ID format'
+            }, status=400)
+        
+        try:
+            actual_id = int(actual_id)
+        except ValueError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid image ID'
+            }, status=400)
+        
+        # Get the image - ensure it belongs to the current user/session
+        if request.user.is_authenticated:
+            image = DesignImage.objects.get(id=actual_id, user=request.user)
+        else:
+            # For guest users, check session
+            session_key = request.session.session_key
+            if not session_key:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'No session found'
+                }, status=400)
+            image = DesignImage.objects.get(id=actual_id, session_id=session_key)
+        
+        # Delete the database entry (not the actual file)
+        image_name = image.name
+        image.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Image "{image_name}" deleted successfully'
+        })
+        
+    except DesignImage.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'Image not found or access denied'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'imagekit',
     'core',
     'accounts',
     'products',
@@ -160,3 +161,17 @@ STATICFILES_DIRS = [
 
 # Site configuration
 SITE_NAME = 'Model2Design'
+
+
+# PIL/Pillow Settings for handling large images
+from PIL import Image
+# Increase max image pixels to handle large images (500 megapixels)
+Image.MAX_IMAGE_PIXELS = 500000000  # 500 million pixels
+
+# Alternative: Set to None to disable the check entirely (use with caution)
+# Image.MAX_IMAGE_PIXELS = None
+
+# Maximum file upload size (25MB)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 25 * 1024 * 1024  # 25MB
+

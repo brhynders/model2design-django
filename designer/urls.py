@@ -9,4 +9,9 @@ urlpatterns = [
     path('share/<int:design_id>/', views.design_share, name='design_share'),
     path('my-designs/', views.my_designs, name='my_designs'),
     path('select-template/', views.select_template, name='select_template'),
+    
+    # Image Bank API endpoints
+    path('images/', views.user_images_api, name='user_images_api'),
+    path('images/upload/', views.upload_image_api, name='upload_image_api'),
+    path('images/delete/<str:image_id>/', views.delete_image_api, name='delete_image_api'),
 ]

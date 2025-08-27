@@ -25,6 +25,7 @@
   </head>
 
   <body>
+    {% csrf_token %}
     <div id="designer-container" x-data>
       <!-- Loading Overlay -->
       <div id="loading-overlay" x-show="$store.designer.isLoading" x-transition>
@@ -244,7 +245,7 @@
           <div class="layer-tabs-section">
             <div class="layer-tabs" id="layer-tabs">
               <template
-                x-for="(layer, layerId) in $store.designer.layers"
+                x-for="(layer, layerId) in Object.fromEntries(Object.entries($store.designer.layers).filter(([id, layer]) => layer.settings?.canSelect !== false))"
                 :key="layerId"
               >
                 <button
@@ -343,10 +344,31 @@
             </div>
 
             <!-- Material Section -->
-            <div class="design-section">
+            <div 
+              class="design-section"
+              x-show="$store.designer.layers[$store.designer.currentLayer]?.settings?.canChangeBumpmap"
+              x-transition
+            >
               <h6 class="design-section-label">Material</h6>
               <div class="material-grid" id="material-options">
-                <!-- Material options will be populated here -->
+                <template x-for="(bumpmap, key) in window.phpData?.bumpmaps || {}" :key="key">
+                  <template x-if="(!window.phpData?.product?.supportedBumpmaps?.length || window.phpData.product.supportedBumpmaps.includes(key))">
+                    <div 
+                      class="material-item-wrapper" 
+                      :data-material="key"
+                      :title="bumpmap.description || bumpmap.name"
+                      @click="$store.designer.setLayerMaterial(key)"
+                    >
+                      <div 
+                        class="material-item"
+                        :class="{ 'selected': $store.designer.layers[$store.designer.currentLayer]?.material === key }"
+                      >
+                        <img :src="bumpmap.thumbnail" :alt="bumpmap.name">
+                      </div>
+                      <div class="material-name" x-text="bumpmap.name"></div>
+                    </div>
+                  </template>
+                </template>
               </div>
             </div>
 
@@ -520,39 +542,449 @@
 
       <!-- Alpine.js Modals -->
       <!-- Image Bank Modal -->
-      <div
-        class="modal fade"
-        id="imageBankModal"
+      <div 
+        class="modal fade image-bank-modal" 
+        id="imageBankModal" 
         tabindex="-1"
-        aria-labelledby="imageBankModalLabel"
-        aria-hidden="true"
+        x-data="{
+          images: [],
+          selectedImage: null,
+          isLoading: false,
+          uploadProgress: 0,
+          searchQuery: '',
+          currentCategory: 'all',
+          categories: window.phpData?.imageBank?.categories || [],
+          
+          get filteredImages() {
+            let filtered = this.images;
+            
+            // Filter by category
+            if (this.currentCategory === 'all') {
+              // Show all images
+            } else if (this.currentCategory === 'my-images') {
+              // Show only user uploaded images (DesignImage)
+              filtered = filtered.filter(img => img.source === 'user');
+            } else {
+              // Show images from specific brand category
+              filtered = filtered.filter(img => img.category_id == this.currentCategory);
+            }
+            
+            // Filter by search query
+            if (this.searchQuery) {
+              filtered = filtered.filter(img => 
+                img.name.toLowerCase().includes(this.searchQuery.toLowerCase())
+              );
+            }
+            
+            return filtered;
+          },
+          
+          get categoryTitle() {
+            if (this.currentCategory === 'all') return 'All Images';
+            if (this.currentCategory === 'my-images') return 'My Images';
+            
+            const category = this.categories.find(cat => cat.id == this.currentCategory);
+            return category ? category.name : 'All Images';
+          },
+          
+          async loadImages() {
+            this.isLoading = true;
+            try {
+              const response = await fetch('/designer/images/');
+              const data = await response.json();
+              this.images = data.images || [];
+            } catch (error) {
+              console.error('Error loading images:', error);
+            } finally {
+              this.isLoading = false;
+            }
+          },
+          
+          async uploadImage(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            
+            const formData = new FormData();
+            
+            // Add all selected files
+            for (let i = 0; i < files.length; i++) {
+              formData.append('images', files[i]);
+            }
+            
+            this.isLoading = true;
+            this.uploadProgress = 0;
+            
+            try {
+              const response = await fetch('/designer/images/upload/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+              });
+              
+              const result = await response.json();
+              
+              if (response.ok && result.success) {
+                // Add all successfully uploaded images to the beginning of the list
+                if (result.images && result.images.length > 0) {
+                  this.images.unshift(...result.images);
+                  
+                  // Switch to 'My Images' category to show the uploaded images
+                  this.currentCategory = 'my-images';
+                }
+                
+                // Show success message
+                if (result.uploaded_count > 0) {
+                  console.log(`Successfully uploaded ${result.uploaded_count} image(s)`);
+                }
+                
+                // Show any errors that occurred
+                if (result.errors && result.errors.length > 0) {
+                  console.warn('Some uploads failed:', result.errors);
+                  // You could display these errors to the user in a toast/alert
+                }
+                
+                event.target.value = '';
+              } else {
+                console.error('Upload failed:', result.error || 'Unknown error');
+                if (result.errors) {
+                  console.error('Individual errors:', result.errors);
+                }
+              }
+            } catch (error) {
+              console.error('Error uploading images:', error);
+            } finally {
+              this.isLoading = false;
+            }
+          },
+          
+          selectImage(image) {
+            this.selectedImage = image;
+          },
+          
+          selectCategory(categoryId) {
+            this.currentCategory = categoryId;
+            this.selectedImage = null;
+          },
+          
+          addToDesign() {
+            if (this.selectedImage) {
+              $store.designer.createImageDecalFromUrl(
+                this.selectedImage.image_url,
+                this.selectedImage.name
+              );
+              
+              bootstrap.Modal.getInstance(document.getElementById('imageBankModal')).hide();
+              this.selectedImage = null;
+            }
+          },
+
+          formatFileSize(bytes) {
+            if (!bytes) return '';
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return Math.round(bytes / Math.pow(1024, i) * 10) / 10 + ' ' + sizes[i];
+          },
+          
+          async deleteImage(image) {
+            if (!image || image.source !== 'user') {
+              console.error('Cannot delete this image');
+              return;
+            }
+            
+            try {
+              const response = await fetch(`/designer/images/delete/${image.id}/`, {
+                method: 'DELETE',
+                headers: {
+                  'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              const result = await response.json();
+              
+              if (response.ok && result.success) {
+                // Remove the image from the local array
+                const index = this.images.findIndex(img => img.id === image.id);
+                if (index > -1) {
+                  this.images.splice(index, 1);
+                }
+                
+                // Clear selection if the deleted image was selected
+                if (this.selectedImage && this.selectedImage.id === image.id) {
+                  this.selectedImage = null;
+                }
+                
+                console.log('Image deleted successfully:', result.message);
+              } else {
+                console.error('Delete failed:', result.error || 'Unknown error');
+              }
+            } catch (error) {
+              console.error('Error deleting image:', error);
+            }
+          }
+        }"
+        @show.bs.modal="loadImages()"
+        @delete-image.window="deleteImage($event.detail)"
       >
-        <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-dialog modal-xl">
           <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="imageBankModalLabel">Image Bank</h5>
-              <button
-                type="button"
-                class="btn-close"
-                data-bs-dismiss="modal"
-                aria-label="Close"
-              ></button>
+            <div class="modal-header py-3">
+              <h5 class="modal-title mb-0">
+                <i class="bi bi-images me-2"></i>
+                Image Bank
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-              <div class="text-center py-4">
-                <i
-                  class="bi bi-images"
-                  style="font-size: 3rem; color: #ccc"
-                ></i>
-                <h6>Image Bank</h6>
-                <p class="text-muted">Image bank functionality would go here</p>
-                <button
-                  class="btn btn-primary"
-                  @click="$store.designer.addDecal('image', {src: '/static/logo-dark.png', name: 'Sample Image'}); bootstrap.Modal.getInstance(document.getElementById('imageBankModal')).hide();"
-                >
-                  Add Sample Image
-                </button>
+              <!-- Sidebar -->
+              <div class="image-bank-sidebar">
+                <!-- Upload Zone -->
+                <div class="image-bank-upload">
+                  <div class="upload-zone" @click="$refs.imageUpload.click()">
+                    <i class="bi bi-cloud-upload"></i>
+                    <div class="upload-text">Upload Images</div>
+                    <div class="upload-hint">Drag & drop or click to browse</div>
+                  </div>
+                  <input 
+                    type="file" 
+                    x-ref="imageUpload" 
+                    accept="image/*" 
+                    multiple
+                    @change="uploadImage($event)"
+                    style="display: none;"
+                  >
+                  <div class="upload-progress" x-show="isLoading">
+                    <div class="progress">
+                      <div class="progress-bar" role="progressbar" :style="`width: ${uploadProgress}%`"></div>
+                    </div>
+                    <div class="progress-text mt-1">Uploading...</div>
+                  </div>
+                </div>
+
+                <!-- Categories -->
+                <div class="image-categories">
+                  <!-- All Images -->
+                  <div 
+                    class="category-item"
+                    :class="{ active: currentCategory === 'all' }"
+                    @click="selectCategory('all')"
+                  >
+                    <div class="category-label">
+                      <i class="bi bi-images"></i>
+                      <span class="category-name">All Images</span>
+                    </div>
+                    <span class="category-count" x-text="images.length"></span>
+                  </div>
+                  
+                  <!-- My Images -->
+                  <div 
+                    class="category-item"
+                    :class="{ active: currentCategory === 'my-images' }"
+                    @click="selectCategory('my-images')"
+                  >
+                    <div class="category-label">
+                      <i class="bi bi-person"></i>
+                      <span class="category-name">My Images</span>
+                    </div>
+                    <span class="category-count" x-text="images.filter(img => img.source === 'user').length"></span>
+                  </div>
+                  
+                  <!-- Brand Categories -->
+                  <template x-for="category in categories" :key="category.id">
+                    <div 
+                      class="category-item"
+                      :class="{ active: currentCategory == category.id }"
+                      @click="selectCategory(category.id)"
+                    >
+                      <div class="category-label">
+                        <i class="bi bi-folder"></i>
+                        <span class="category-name" x-text="category.name"></span>
+                      </div>
+                      <span class="category-count" x-text="images.filter(img => img.category_id == category.id).length"></span>
+                    </div>
+                  </template>
+                </div>
               </div>
+
+              <!-- Main Content -->
+              <div class="image-bank-content">
+                <!-- Header -->
+                <div class="image-bank-header">
+                  <h5 x-text="categoryTitle"></h5>
+                  <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-primary btn-sm"
+                      onclick="window.open('https://remove.bg', '_blank')"
+                      title="Remove backgrounds from your images">
+                      <i class="bi bi-scissors me-1"></i>
+                      Background Remover
+                    </button>
+                    <div class="image-search">
+                      <i class="bi bi-search"></i>
+                      <input type="text" class="form-control" placeholder="Search images..."
+                        x-model="searchQuery">
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Image Grid -->
+                <div class="image-grid-container">
+                  <div x-show="isLoading && images.length === 0" class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                      <span class="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+
+                  <div class="image-grid">
+                    <template x-for="image in filteredImages" :key="image.id">
+                      <div 
+                        class="image-item"
+                        :class="{ selected: selectedImage?.id === image.id }"
+                        @click="selectImage(image)"
+                      >
+                        <div class="image-preview">
+                          <img 
+                            :src="image.thumbnail_url || image.image_url" 
+                            :alt="image.name"
+                            loading="lazy"
+                          >
+                          <div class="image-overlay">
+                            <div class="image-actions">
+                              <button class="btn-icon" title="Select Image">
+                                <i class="bi bi-check"></i>
+                              </button>
+                            </div>
+                          </div>
+                          <!-- Delete button positioned in top right corner -->
+                          <button 
+                            x-show="image.source === 'user'"
+                            class="btn-delete-small" 
+                            title="Delete Image"
+                            data-bs-toggle="modal"
+                            data-bs-target="#deleteImageModal"
+                            @click.stop="$dispatch('prepare-delete', image)"
+                          >
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
+                        <div class="image-info">
+                          <div class="image-name" :title="image.name" x-text="image.name"></div>
+                          <div class="image-meta">
+                            <span x-show="image.width && image.height" class="meta-item">
+                              <i class="bi bi-aspect-ratio"></i>
+                              <span x-text="`${image.width}×${image.height}`"></span>
+                            </span>
+                            <span x-show="image.file_size" class="meta-item">
+                              <i class="bi bi-file-earmark"></i>
+                              <span x-text="formatFileSize(image.file_size)"></span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
+
+                  <div x-show="!isLoading && filteredImages.length === 0" class="empty-state">
+                    <i class="bi bi-images"></i>
+                    <h6>No images found</h6>
+                    <p>Upload some images to get started or select a different category.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button 
+                type="button" 
+                class="btn btn-primary"
+                @click="addToDesign()"
+                :disabled="!selectedImage"
+              >
+                <i class="bi bi-check me-1"></i> 
+                Select Image
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Delete Image Confirmation Modal -->
+      <div 
+        class="modal fade" 
+        id="deleteImageModal" 
+        tabindex="-1"
+        x-data="{
+          imageToDelete: null,
+          isDeleting: false
+        }"
+        @prepare-delete.window="imageToDelete = $event.detail"
+      >
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">
+                <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                Delete Image
+              </h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <p>Are you sure you want to delete this image?</p>
+              <div x-show="imageToDelete" class="delete-preview">
+                <div class="d-flex align-items-center p-3 bg-light rounded">
+                  <img 
+                    :src="imageToDelete?.thumbnail_url || imageToDelete?.image_url" 
+                    :alt="imageToDelete?.name"
+                    style="width: 60px; height: 60px; object-fit: cover; border-radius: 4px;"
+                  >
+                  <div class="ms-3">
+                    <div class="fw-semibold" x-text="imageToDelete?.name"></div>
+                    <small class="text-muted">
+                      <span x-show="imageToDelete?.width && imageToDelete?.height">
+                        <span x-text="`${imageToDelete.width}×${imageToDelete.height}`"></span>
+                      </span>
+                      <span x-show="imageToDelete?.file_size" class="ms-2">
+                        <span x-text="$store.imageBank?.formatFileSize(imageToDelete.file_size) || ''"></span>
+                      </span>
+                    </small>
+                  </div>
+                </div>
+              </div>
+              <div class="alert alert-warning mt-3 mb-0">
+                <i class="bi bi-info-circle me-2"></i>
+                This action cannot be undone.
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button 
+                type="button" 
+                class="btn btn-secondary" 
+                data-bs-dismiss="modal"
+                :disabled="isDeleting"
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-danger"
+                :disabled="isDeleting || !imageToDelete"
+                @click="
+                  isDeleting = true;
+                  $dispatch('delete-image', imageToDelete);
+                  bootstrap.Modal.getInstance($el.closest('.modal')).hide();
+                  isDeleting = false;
+                "
+              >
+                <span x-show="!isDeleting">
+                  <i class="bi bi-trash me-1"></i>
+                  Delete Image
+                </span>
+                <span x-show="isDeleting">
+                  <span class="spinner-border spinner-border-sm me-1"></span>
+                  Deleting...
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -600,8 +1032,8 @@
         tabindex="-1"
         aria-labelledby="editDesignNameModalLabel"
         aria-hidden="true"
-        x-data="{ tempDesignName: '' }"
-        @show.bs.modal="tempDesignName = $store.designer.designName; setTimeout(() => $refs.designNameInput.focus(), 100)"
+        x-data
+        @show.bs.modal="setTimeout(() => $refs.designNameInput.focus(), 100)"
       >
         <div class="modal-dialog modal-dialog-centered modal-lg">
           <div class="modal-content">
@@ -617,9 +1049,6 @@
               ></button>
             </div>
             <div class="modal-body">
-              <form
-                @submit.prevent="$store.designer.updateDesignName(tempDesignName); bootstrap.Modal.getInstance($el.closest('.modal')).hide()"
-              >
                 <div class="mb-3">
                   <label for="designNameInput" class="form-label"
                     >Design Name</label
@@ -628,27 +1057,18 @@
                     type="text"
                     class="form-control"
                     id="designNameInput"
-                    x-ref="designNameInput"
-                    x-model="tempDesignName"
+                    x-model="$store.designer.designName"
                     maxlength="200"
                     required
-                    @keyup.enter="$store.designer.updateDesignName(tempDesignName); bootstrap.Modal.getInstance($el.closest('.modal')).hide()"
+                    @keyup.enter="bootstrap.Modal.getInstance($el.closest('.modal')).hide()"
                   />
                 </div>
-              </form>
             </div>
             <div class="modal-footer">
               <button
                 type="button"
-                class="btn btn-secondary"
-                data-bs-dismiss="modal"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
                 class="btn btn-primary"
-                @click="$store.designer.updateDesignName(tempDesignName); bootstrap.Modal.getInstance($el.closest('.modal')).hide()"
+                data-bs-dismiss="modal"
               >
                 Save Changes
               </button>
@@ -900,6 +1320,7 @@
       tabindex="-1"
       aria-labelledby="confirmClearModalLabel"
       aria-hidden="true"
+      x-data
     >
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -933,7 +1354,7 @@
               type="button"
               class="btn btn-warning"
               data-bs-dismiss="modal"
-              @click="$store.designer.clearDesign()"
+              @click="$store.designer.clearDesign();"
             >
               <i class="bi bi-arrow-clockwise me-1"></i>
               Clear Design
@@ -950,6 +1371,7 @@
       tabindex="-1"
       aria-labelledby="confirmExitModalLabel"
       aria-hidden="true"
+      x-data
     >
       <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -1013,7 +1435,7 @@
           bumpmaps: {{ bumpmaps|safe }},
           fonts: {{ fonts|safe }},
           imageBank: {
-              categories: [],
+              categories: {{ image_categories|safe }},
               initialImages: [],
               loadedAt: {% now "U" %}
           },

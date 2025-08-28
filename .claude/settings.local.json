@@ -12,7 +12,8 @@
       "Bash(cat:*)",
       "Bash(pkill:*)",
       "Bash(true)",
-      "Bash(python test:*)"
+      "Bash(python test:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": [],

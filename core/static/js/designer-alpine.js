@@ -1236,19 +1236,16 @@ document.addEventListener("alpine:init", () => {
         // Get session ID for guest users
         const sessionId = this.getSessionId();
         
+        // Capture screenshots from different angles
+        const screenshots = this.captureScreenshots();
+        
         // Prepare design data using Alpine.raw to avoid proxy issues
-        const designData = {
-          name: this.designName || 'Untitled Design',
-          product: this.productId,
-          data: Alpine.raw({
-            layers: this.layers,
-            currentLayer: this.currentLayer,
-            productId: this.productId,
-            designName: this.designName
-          }),
-          session_id: sessionId,
-          public: false
-        };
+        const designData = Alpine.raw({
+          layers: this.layers,
+          currentLayer: this.currentLayer,
+          productId: window.phpData?.product?.id || this.product?.id || 1,
+          designName: this.designName
+        });
 
         // Get CSRF token
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
@@ -1256,17 +1253,54 @@ document.addEventListener("alpine:init", () => {
                          document.querySelector('meta[name="csrf-token"]')?.content ||
                          this.getCookie('csrftoken');
         
-        debugLog("Saving design data:", designData);
+        // Create FormData for multipart upload
+        const formData = new FormData();
+        formData.append('name', this.designName || 'Untitled Design');
+        formData.append('product', window.phpData?.product?.id || this.product?.id || 1);
+        formData.append('data', JSON.stringify(designData));
+        formData.append('public', '0'); // false as string
+        
+        // Convert base64 screenshots to File objects
+        const convertBase64ToFile = (base64Data, filename) => {
+          if (!base64Data || !base64Data.startsWith('data:image/')) return null;
+          
+          // Remove data:image/png;base64, prefix
+          const base64 = base64Data.split(',')[1];
+          // Convert to binary
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'image/png' });
+          
+          // Create File object
+          return new File([blob], filename, { type: 'image/png' });
+        };
+        
+        // Add screenshot files
+        const frontFile = convertBase64ToFile(screenshots.front, 'thumbnail_front.png');
+        const backFile = convertBase64ToFile(screenshots.back, 'thumbnail_back.png');
+        const leftFile = convertBase64ToFile(screenshots.left, 'thumbnail_left.png');
+        const rightFile = convertBase64ToFile(screenshots.right, 'thumbnail_right.png');
+        
+        if (frontFile) formData.append('thumbnail_front', frontFile);
+        if (backFile) formData.append('thumbnail_back', backFile);
+        if (leftFile) formData.append('thumbnail_left', leftFile);
+        if (rightFile) formData.append('thumbnail_right', rightFile);
+        
+        debugLog("Saving design with FormData");
         debugLog("CSRF token:", csrfToken);
 
-        // Make POST request to save design
+        // Make POST request to save design (multipart/form-data)
         const response = await fetch('/designer/save/', {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             'X-CSRFToken': csrfToken
+            // No Content-Type header - let browser set multipart/form-data
           },
-          body: JSON.stringify(designData)
+          body: formData
         });
 
         const result = await response.json();
@@ -1277,7 +1311,8 @@ document.addEventListener("alpine:init", () => {
         
         if (result.success) {
           debugLog("Design saved successfully:", result);
-          alert(result.message || "Design saved successfully!");
+          // Immediately redirect to my designs page
+          window.location.href = '/designer/my-designs/';
         } else {
           throw new Error(result.error || 'Failed to save design');
         }
@@ -1304,6 +1339,125 @@ document.addEventListener("alpine:init", () => {
         }
       }
       return cookieValue;
+    },
+
+    // Screenshot capture functionality
+    captureScreenshots() {
+      if (!renderer || !camera || !scene) {
+        debugWarn('Three.js components not initialized, cannot capture screenshots');
+        return {};
+      }
+
+      const screenshots = {};
+      const views = ['front', 'back', 'left', 'right'];
+      
+      // Store current camera position
+      const currentPosition = {
+        x: camera.position.x,
+        y: camera.position.y,
+        z: camera.position.z
+      };
+      
+      // Store current background and remove it for transparent screenshots
+      const originalBackground = scene.background;
+      scene.background = null;
+      
+      views.forEach(view => {
+        try {
+          // Rotate to specific view
+          this.rotateView(view);
+          
+          // Render the scene with transparent background
+          renderer.render(scene, camera);
+          
+          // Capture screenshot
+          screenshots[view] = renderer.domElement.toDataURL('image/png');
+          debugLog(`Captured ${view} screenshot`);
+        } catch (error) {
+          debugError(`Failed to capture ${view} screenshot:`, error);
+          screenshots[view] = null;
+        }
+      });
+      
+      // Restore camera position
+      camera.position.set(currentPosition.x, currentPosition.y, currentPosition.z);
+      if (controls && controls.update) {
+        controls.update();
+      }
+      
+      // Restore original background
+      scene.background = originalBackground;
+      
+      // Render the scene to restore the normal view
+      renderer.render(scene, camera);
+      
+      debugLog('Screenshot capture completed:', Object.keys(screenshots));
+      return screenshots;
+    },
+
+    // Rotate view to specific angle for screenshots
+    rotateView(direction) {
+      if (!window.phpData?.product || !model || !camera) {
+        debugWarn(`Cannot rotate view - missing dependencies: product=${!!window.phpData?.product}, model=${!!model}, camera=${!!camera}`);
+        return;
+      }
+
+      // Find the model in the scene
+      const modelObject = scene.children.find(
+        (child) => child.type === "Group" || child.type === "Object3D"
+      );
+
+      if (!modelObject) {
+        debugWarn('No model found in scene for view rotation');
+        return;
+      }
+
+      // Calculate bounding box and center
+      const box = new THREE.Box3().setFromObject(modelObject);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+
+      // Calculate proper distance based on camera FOV and model size
+      const container = document.getElementById("canvas-container");
+      if (!container) {
+        debugWarn('Canvas container not found');
+        return;
+      }
+
+      const aspect = container.clientWidth / container.clientHeight;
+      const horizontalFOV = 2 * Math.atan(Math.tan((camera.fov * Math.PI) / 360) * aspect);
+      const verticalFOV = (camera.fov * Math.PI) / 180;
+
+      // Calculate distance needed to fit model
+      const horizontalDistance = (size.x / 2) / Math.tan(horizontalFOV / 2);
+      const verticalDistance = (size.y / 2) / Math.tan(verticalFOV / 2);
+      const depthDistance = size.z / 2;
+      const distance = Math.max(horizontalDistance, verticalDistance, depthDistance) * 1.5;
+
+      let position;
+      switch (direction) {
+        case "front":
+          position = new THREE.Vector3(0, 0, distance);
+          break;
+        case "back":
+          position = new THREE.Vector3(0, 0, -distance);
+          break;
+        case "left":
+          position = new THREE.Vector3(distance, 0, 0);
+          break;
+        case "right":
+          position = new THREE.Vector3(-distance, 0, 0);
+          break;
+        default:
+          debugWarn(`Unknown view direction: ${direction}`);
+          return;
+      }
+
+      // Position camera
+      camera.position.copy(position.add(center));
+      camera.lookAt(center);
+      
+      debugLog(`Camera positioned for ${direction} view`);
     },
 
     getSessionId() {

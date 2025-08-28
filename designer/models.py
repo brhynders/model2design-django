@@ -31,6 +31,14 @@ class Design(models.Model):
         blank=True,
         help_text="Session ID for guest users"
     )
+    brand = models.ForeignKey(
+        Brand,
+        on_delete=models.CASCADE,
+        related_name='designs',
+        null=True,
+        blank=True,
+        help_text="Brand associated with this design"
+    )
     name = models.CharField(max_length=255)
     product = models.IntegerField()  # References product ID from data.products.php
     data = models.JSONField()  # Stores the design data
@@ -48,9 +56,10 @@ class Design(models.Model):
         unique_together = []
 
     def __str__(self):
+        brand_name = self.brand.name if self.brand else "No Brand"
         if self.user:
-            return f"{self.name} - {self.user.email}"
-        return f"{self.name} - Guest ({self.session_id[:8]}...)"
+            return f"{self.name} - {self.user.email} ({brand_name})"
+        return f"{self.name} - Guest ({self.session_id[:8]}...) ({brand_name})"
     
     def get_owner_display(self):
         """Get display name for the design owner"""

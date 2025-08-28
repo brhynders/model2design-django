@@ -8,7 +8,6 @@ from django.db import IntegrityError
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 import json
-import uuid
 from .models import Design, DesignTemplate, DesignShare, DesignImage
 from brands.models import Brand, BrandBackground, BrandImageCategory, BrandImage
 from products.models import Product
@@ -28,7 +27,6 @@ def designer_view(request):
     # Get product ID and design ID from URL
     product_id = request.GET.get('product', 0)
     design_id = request.GET.get('design')
-    copy_design_id = request.GET.get('copy')
     template_id = request.GET.get('template')
     create_template = request.GET.get('create_template') == '1'
     template_edit_id = request.GET.get('template_edit')
@@ -51,62 +49,36 @@ def designer_view(request):
     
     # Load design data if design ID is provided
     design_data = None
-    if design_id and request.user.is_authenticated:
+    if design_id:
         try:
-            design = Design.objects.get(id=design_id, user=request.user)
+            if request.user.is_authenticated:
+                # Try to load user's design
+                design = Design.objects.get(id=design_id, user=request.user)
+            else:
+                # Try to load guest's design using session_id
+                if not request.session.session_key:
+                    request.session.create()
+                design = Design.objects.get(id=design_id, session_id=request.session.session_key)
+            
             design_data = {
                 'id': design.id,
                 'name': design.name,
                 'product_id': design.product,
                 'design_data': design.data,
                 'screenshots': {
-                    'front': design.thumbnail_front,
-                    'back': design.thumbnail_back,
-                    'left': design.thumbnail_left,
-                    'right': design.thumbnail_right
+                    'front': design.thumbnail_front.url if design.thumbnail_front else '',
+                    'back': design.thumbnail_back.url if design.thumbnail_back else '',
+                    'left': design.thumbnail_left.url if design.thumbnail_left else '',
+                    'right': design.thumbnail_right.url if design.thumbnail_right else ''
                 }
             }
         except Design.DoesNotExist:
-            # Check session for guest designs
-            if 'guest_designs' in request.session:
-                for guest_design in request.session['guest_designs']:
-                    if guest_design.get('id') == design_id:
-                        design_data = {
-                            'id': guest_design['id'],
-                            'name': guest_design['name'],
-                            'product_id': guest_design['product_id'],
-                            'design_data': guest_design['design_data'],
-                            'screenshots': guest_design.get('screenshots', {})
-                        }
-                        break
-    
-    # Handle copy design functionality
-    if copy_design_id and request.user.is_authenticated:
-        try:
-            copy_design_id = int(copy_design_id)
-            original_design = Design.objects.get(id=copy_design_id, public=True)
-            
-            # Create a duplicate design for the current user
-            duplicate_design = Design.objects.create(
-                user=request.user,
-                brand=current_brand,
-                name=f"{original_design.name} (Copy)",
-                product=original_design.product,
-                data=original_design.data,
-                thumbnail_front=original_design.thumbnail_front,
-                thumbnail_back=original_design.thumbnail_back,
-                thumbnail_left=original_design.thumbnail_left,
-                thumbnail_right=original_design.thumbnail_right,
-                public=False  # Always create as private
-            )
-            
-            # Redirect to the designer with the new design
-            return redirect(f'/designer/?product={original_design.product}&design={duplicate_design.id}')
-        except (ValueError, Design.DoesNotExist):
             pass
     
     # Load template data if template ID is provided
     template_data = None
+    is_editing_template = False
+    
     if template_id:
         try:
             template_id = int(template_id)
@@ -131,7 +103,7 @@ def designer_view(request):
             pass
     
     # Load template for editing if template_edit_id is provided
-    if template_edit_id and is_brand_owner:
+    elif template_edit_id and is_brand_owner:
         try:
             template_edit_id = int(template_edit_id)
             template = DesignTemplate.objects.get(
@@ -148,9 +120,9 @@ def designer_view(request):
                     'back': template.thumbnail_back,
                     'left': template.thumbnail_left,
                     'right': template.thumbnail_right
-                },
-                'is_editing': True
+                }
             }
+            is_editing_template = True
         except (ValueError, DesignTemplate.DoesNotExist):
             pass
     
@@ -205,6 +177,7 @@ def designer_view(request):
         'product_id': product_id,
         'design_data': json.dumps(design_data) if design_data else None,
         'template_data': json.dumps(template_data) if template_data else None,
+        'is_editing_template': is_editing_template,
         'create_template': create_template,
         'bumpmaps': json.dumps(BUMPMAPS_DATA),
         'fonts': json.dumps(FONTS_DATA),
@@ -216,76 +189,110 @@ def designer_view(request):
     return render(request, 'designer/designer.html', context)
 
 
+
 @require_http_methods(["POST"])
 def save_design(request):
     """Save or update a design"""
-    try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': 'Invalid request data'})
-    
     # Get current brand
-    current_brand = request.brand
+    current_brand = getattr(request, 'brand', None)
     
-    # Validate required fields
+    # Validate required fields from form data
     required_fields = ['name', 'product', 'data']
     for field in required_fields:
-        if field not in data or not data[field]:
+        if field not in request.POST or not request.POST.get(field):
             return JsonResponse({'success': False, 'error': f'Missing required field: {field}'})
     
-    # Extract design data
-    design_id = data.get('design_id')
-    name = data['name']
-    product = int(data['product'])
-    thumbnail_front = data.get('thumbnail_front', '')
-    thumbnail_back = data.get('thumbnail_back', '')
-    thumbnail_left = data.get('thumbnail_left', '')
-    thumbnail_right = data.get('thumbnail_right', '')
-    is_public = bool(data.get('public', 0))
-    design_data = data['data']
+    try:
+        # Extract design data from form
+        design_id = request.POST.get('design_id')
+        name = request.POST.get('name')
+        product = int(request.POST.get('product'))
+        is_public = request.POST.get('public') == '1'  # '1' for true, '0' for false
+        design_data = json.loads(request.POST.get('data'))  # Parse JSON from form field
+        
+        # Get uploaded thumbnail files directly (no base64 processing needed!)
+        thumbnail_front = request.FILES.get('thumbnail_front')
+        thumbnail_back = request.FILES.get('thumbnail_back')
+        thumbnail_left = request.FILES.get('thumbnail_left')
+        thumbnail_right = request.FILES.get('thumbnail_right')
+    except (ValueError, json.JSONDecodeError) as e:
+        return JsonResponse({'success': False, 'error': f'Invalid request data: {str(e)}'})
+    
+    # Clean design data - remove texture properties from decals
+    if isinstance(design_data, dict) and 'layers' in design_data:
+        for layer_name, layer_data in design_data['layers'].items():
+            if isinstance(layer_data, dict) and 'decals' in layer_data:
+                for decal in layer_data['decals']:
+                    if isinstance(decal, dict) and 'texture' in decal:
+                        del decal['texture']
     
     if not request.user.is_authenticated:
-        # Handle guest design save
-        if 'guest_designs' not in request.session:
-            request.session['guest_designs'] = []
+        # Handle guest design save - save to database with session_id
+        # Ensure session exists
+        if not request.session.session_key:
+            request.session.create()
         
-        guest_design = {
-            'id': design_id or f'temp_{uuid.uuid4().hex[:8]}',
-            'name': name,
-            'product_id': product,
-            'design_data': design_data,
-            'screenshots': {
-                'front': thumbnail_front,
-                'back': thumbnail_back,
-                'left': thumbnail_left,
-                'right': thumbnail_right
-            },
-            'public': is_public,
-            'brand_id': current_brand.id,
-            'created_at': timezone.now()
-        }
+        session_id = request.session.session_key
         
-        # Update or add the design
-        designs = request.session['guest_designs']
-        updated = False
-        for i, d in enumerate(designs):
-            if d.get('id') == design_id:
-                designs[i] = guest_design
-                updated = True
-                break
-        
-        if not updated:
-            designs.append(guest_design)
-        
-        request.session['guest_designs'] = designs
-        request.session.modified = True
-        
-        return JsonResponse({
-            'success': True,
-            'design_id': guest_design['id'],
-            'is_temporary': True,
-            'message': 'Design saved temporarily. Create an account to save permanently.'
-        })
+        try:
+            if design_id and str(design_id).isdigit():
+                # Update existing guest design
+                design = Design.objects.get(id=design_id, session_id=session_id)
+                design.name = name
+                design.product = product
+                design.brand = current_brand
+                # Only update thumbnails if new ones were provided (files come directly from request.FILES)
+                if thumbnail_front:
+                    design.thumbnail_front = thumbnail_front
+                if thumbnail_back:
+                    design.thumbnail_back = thumbnail_back
+                if thumbnail_left:
+                    design.thumbnail_left = thumbnail_left
+                if thumbnail_right:
+                    design.thumbnail_right = thumbnail_right
+                design.data = design_data
+                design.public = is_public
+                design.save()
+            else:
+                # Create new guest design
+                design_kwargs = {
+                    'session_id': session_id,
+                    'brand': current_brand,
+                    'name': name,
+                    'product': product,
+                    'data': design_data,
+                    'public': is_public
+                }
+                # Only add thumbnails if they exist (files come directly from request.FILES)
+                if thumbnail_front:
+                    design_kwargs['thumbnail_front'] = thumbnail_front
+                if thumbnail_back:
+                    design_kwargs['thumbnail_back'] = thumbnail_back
+                if thumbnail_left:
+                    design_kwargs['thumbnail_left'] = thumbnail_left
+                if thumbnail_right:
+                    design_kwargs['thumbnail_right'] = thumbnail_right
+                
+                design = Design.objects.create(**design_kwargs)
+            
+            return JsonResponse({
+                'success': True,
+                'design_id': design.id,
+                'is_temporary': False,
+                'message': 'Design saved successfully!',
+                'redirect_url': '/designer/my-designs/'
+            })
+            
+        except Design.DoesNotExist:
+            return JsonResponse({'success': False, 'error': 'Design not found or access denied'})
+        except IntegrityError as e:
+            if 'unique constraint' in str(e).lower():
+                return JsonResponse({'success': False, 'error': 'A design with this name already exists. Please choose a different name.'})
+            return JsonResponse({'success': False, 'error': f'Database error: {str(e)}'})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'error': f'Unexpected error: {str(e)}'})
     
     else:
         # Handle logged-in user design save
@@ -295,32 +302,46 @@ def save_design(request):
                 design = Design.objects.get(id=design_id, user=request.user)
                 design.name = name
                 design.product = product
-                design.thumbnail_front = thumbnail_front
-                design.thumbnail_back = thumbnail_back
-                design.thumbnail_left = thumbnail_left
-                design.thumbnail_right = thumbnail_right
+                design.brand = current_brand
+                # Only update thumbnails if new ones were provided (files come directly from request.FILES)
+                if thumbnail_front:
+                    design.thumbnail_front = thumbnail_front
+                if thumbnail_back:
+                    design.thumbnail_back = thumbnail_back
+                if thumbnail_left:
+                    design.thumbnail_left = thumbnail_left
+                if thumbnail_right:
+                    design.thumbnail_right = thumbnail_right
                 design.data = design_data
                 design.public = is_public
                 design.save()
             else:
                 # Create new design
-                design = Design.objects.create(
-                    user=request.user,
-                    brand=current_brand,
-                    name=name,
-                    product=product,
-                    thumbnail_front=thumbnail_front,
-                    thumbnail_back=thumbnail_back,
-                    thumbnail_left=thumbnail_left,
-                    thumbnail_right=thumbnail_right,
-                    data=design_data,
-                    public=is_public
-                )
+                design_kwargs = {
+                    'user': request.user,
+                    'brand': current_brand,
+                    'name': name,
+                    'product': product,
+                    'data': design_data,
+                    'public': is_public
+                }
+                # Only add thumbnails if they exist (files come directly from request.FILES)
+                if thumbnail_front:
+                    design_kwargs['thumbnail_front'] = thumbnail_front
+                if thumbnail_back:
+                    design_kwargs['thumbnail_back'] = thumbnail_back
+                if thumbnail_left:
+                    design_kwargs['thumbnail_left'] = thumbnail_left
+                if thumbnail_right:
+                    design_kwargs['thumbnail_right'] = thumbnail_right
+                
+                design = Design.objects.create(**design_kwargs)
             
             return JsonResponse({
                 'success': True,
                 'design_id': design.id,
-                'message': 'Design saved successfully!'
+                'message': 'Design saved successfully!',
+                'redirect_url': '/designer/my-designs/'
             })
             
         except Design.DoesNotExist:
@@ -328,7 +349,11 @@ def save_design(request):
         except IntegrityError as e:
             if 'unique constraint' in str(e).lower():
                 return JsonResponse({'success': False, 'error': 'A design with this name already exists. Please choose a different name.'})
-            raise
+            return JsonResponse({'success': False, 'error': f'Database error: {str(e)}'})
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'success': False, 'error': f'Unexpected error: {str(e)}'})
 
 
 def design_share(request, design_id):
@@ -362,21 +387,263 @@ def design_share(request, design_id):
         return redirect('/404')
 
 
-@login_required
 def my_designs(request):
-    """View for user's saved designs"""
-    designs = Design.objects.filter(
-        user=request.user,
-        brand=request.brand
-    ).order_by('-updated_at')
+    """View for user's saved designs - supports both guest and authenticated users"""
+    from django.core.paginator import Paginator
+    from django.db.models import Q
+    from datetime import datetime, timedelta
+    import json
+    
+    current_brand = getattr(request, 'brand', None)
+    is_guest = not request.user.is_authenticated
+    
+    # Get query parameters
+    search = request.GET.get('search', '').strip()
+    order_by = request.GET.get('order', 'updated_desc')
+    page = request.GET.get('page', 1)
+    per_page = 9
+    
+    if is_guest:
+        # Handle guest designs from database using session_id
+        if not request.session.session_key:
+            request.session.create()
+        
+        session_id = request.session.session_key
+        designs_queryset = Design.objects.filter(
+            session_id=session_id,
+            brand=current_brand
+        )
+    else:
+        # Handle authenticated user designs
+        designs_queryset = Design.objects.filter(
+            user=request.user,
+            brand=current_brand
+        )
+    
+    # Apply search filter
+    if search:
+        designs_queryset = designs_queryset.filter(name__icontains=search)
+    
+    # Apply ordering
+    order_field = '-updated_at'  # default
+    if order_by == 'updated_asc':
+        order_field = 'updated_at'
+    elif order_by == 'created_desc':
+        order_field = '-created_at'
+    elif order_by == 'created_asc':
+        order_field = 'created_at'
+    elif order_by == 'name_asc':
+        order_field = 'name'
+    elif order_by == 'name_desc':
+        order_field = '-name'
+    
+    designs_queryset = designs_queryset.order_by(order_field)
+    
+    # Pagination
+    paginator = Paginator(designs_queryset, per_page)
+    try:
+        designs_paginated = paginator.page(page)
+    except:
+        designs_paginated = paginator.page(1)
+    
+    # Calculate statistics
+    all_designs = designs_queryset.all()
+    total_designs = all_designs.count()
+    
+    # Recent designs (last week)
+    one_week_ago = datetime.now() - timedelta(days=7)
+    recent_designs = all_designs.filter(created_at__gte=one_week_ago).count()
+    
+    # Unique products designed
+    unique_products = all_designs.values_list('product', flat=True).distinct().count()
     
     context = {
         'page_title': 'My Designs',
-        'designs': designs,
-        'current_brand': request.brand,
+        'designs': designs_paginated,
+        'current_brand': current_brand,
+        'is_guest': is_guest,
+        'search': search,
+        'order_by': order_by,
+        'total_designs': total_designs,
+        'recent_designs': recent_designs,
+        'products_designed': unique_products,
+        'has_search_or_filter': bool(search) or order_by != 'updated_desc',
+        'products_data': json.dumps(PRODUCTS_DATA),  # For JavaScript
+        'bumpmaps_data': json.dumps(BUMPMAPS_DATA),
+        'fonts_data': json.dumps(FONTS_DATA),
     }
     
     return render(request, 'designer/my_designs.html', context)
+
+
+@require_http_methods(["POST"])
+def update_design_visibility(request, design_id):
+    """Update design visibility (public/private)"""
+    from django.http import JsonResponse
+    import json
+    
+    current_brand = getattr(request, 'brand', None)
+    is_guest = not request.user.is_authenticated
+    
+    try:
+        data = json.loads(request.body)
+        is_public = bool(data.get('public', False))
+    except (json.JSONDecodeError, KeyError):
+        return JsonResponse({'success': False, 'error': 'Invalid request data'})
+    
+    try:
+        if is_guest:
+            # Handle guest design visibility update using session_id
+            if not request.session.session_key:
+                return JsonResponse({'success': False, 'error': 'No active session'})
+            
+            design = Design.objects.get(
+                id=design_id, 
+                session_id=request.session.session_key,
+                brand=current_brand
+            )
+        else:
+            # Handle authenticated user design visibility update
+            design = Design.objects.get(
+                id=design_id, 
+                user=request.user,
+                brand=current_brand
+            )
+        
+        # Update visibility
+        design.public = is_public
+        design.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Design {"made public" if is_public else "made private"} successfully',
+            'is_public': is_public
+        })
+        
+    except Design.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Design not found or access denied'})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': f'Unexpected error: {str(e)}'})
+
+
+@require_http_methods(["DELETE"])
+def delete_design(request, design_id):
+    """Delete a design"""
+    from django.http import JsonResponse
+    import json
+    
+    current_brand = getattr(request, 'brand', None)
+    is_guest = not request.user.is_authenticated
+    
+    try:
+        if is_guest:
+            # Handle guest design deletion using session_id
+            if not request.session.session_key:
+                return JsonResponse({'success': False, 'error': 'No active session'})
+            
+            design = Design.objects.get(
+                id=design_id, 
+                session_id=request.session.session_key,
+                brand=current_brand
+            )
+        else:
+            # Handle authenticated user design deletion
+            design = Design.objects.get(
+                id=design_id, 
+                user=request.user,
+                brand=current_brand
+            )
+        
+        # Delete the design
+        design.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Design deleted successfully'
+        })
+        
+    except Design.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Design not found or access denied'})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'success': False, 'error': f'Unexpected error: {str(e)}'})
+
+
+@login_required
+def copy_design(request, design_id):
+    """Copy a public design to the current user's account"""
+    current_brand = getattr(request, 'brand', None)
+    
+    try:
+        original_design = get_object_or_404(Design, id=design_id, public=True)
+        
+        # Create a duplicate design for the current user
+        duplicate_design = Design.objects.create(
+            user=request.user,
+            brand=current_brand,
+            name=f"{original_design.name} (Copy)",
+            product=original_design.product,
+            data=original_design.data,
+            thumbnail_front=original_design.thumbnail_front,
+            thumbnail_back=original_design.thumbnail_back,
+            thumbnail_left=original_design.thumbnail_left,
+            thumbnail_right=original_design.thumbnail_right,
+            public=False  # Always create as private
+        )
+        
+        messages.success(request, f'Design "{original_design.name}" has been copied to your account.')
+        
+        # Redirect to the designer with the new design
+        return redirect(f'/designer/?product={original_design.product}&design={duplicate_design.id}')
+    except Design.DoesNotExist:
+        messages.error(request, 'Design not found or not available for copying.')
+        return redirect('/designer/')
+
+
+def load_template(request, template_id):
+    """Load a template for use in the designer"""
+    current_brand = getattr(request, 'brand', None)
+    
+    try:
+        template = get_object_or_404(
+            DesignTemplate,
+            id=template_id,
+            brand=current_brand,
+            is_active=True
+        )
+        
+        # Redirect to designer with template
+        return redirect(f'/designer/?product={template.product}&template={template.id}')
+    except DesignTemplate.DoesNotExist:
+        messages.error(request, 'Template not found.')
+        return redirect('/designer/')
+
+
+@login_required
+def edit_template(request, template_id):
+    """Edit an existing template (brand owners only)"""
+    current_brand = getattr(request, 'brand', None)
+    
+    # Check if user is a brand owner
+    if not request.user.is_brand_owner:
+        messages.error(request, 'You must be a brand owner to edit templates.')
+        return redirect('/designer/')
+    
+    try:
+        template = get_object_or_404(
+            DesignTemplate,
+            id=template_id,
+            brand=current_brand
+        )
+        
+        # Redirect to designer with template edit mode
+        return redirect(f'/designer/?product={template.product}&template_edit={template.id}')
+    except DesignTemplate.DoesNotExist:
+        messages.error(request, 'Template not found.')
+        return redirect('/designer/')
 
 
 def select_template(request):
@@ -652,76 +919,3 @@ def delete_image_api(request, image_id):
         }, status=500)
 
 
-@require_http_methods(["POST"])
-def save_design(request):
-    """Save a design (supports both authenticated users and guests)"""
-    try:
-        # Parse JSON data
-        data = json.loads(request.body)
-        
-        # Get design info
-        name = data.get('name', 'Untitled Design')
-        product_id = data.get('product')
-        design_data = data.get('data', {})
-        session_id = data.get('session_id')
-        public = data.get('public', False)
-        
-        # Validate required fields
-        if not name.strip():
-            return JsonResponse({
-                'success': False,
-                'error': 'Design name is required'
-            }, status=400)
-            
-        if not product_id:
-            return JsonResponse({
-                'success': False,
-                'error': 'Product ID is required'
-            }, status=400)
-            
-        if not design_data:
-            return JsonResponse({
-                'success': False,
-                'error': 'Design data is required'
-            }, status=400)
-        
-        # Create design instance
-        design = Design(
-            name=name.strip(),
-            product=product_id,
-            data=design_data,
-            public=public
-        )
-        
-        # Set user or session_id
-        if request.user.is_authenticated:
-            design.user = request.user
-        else:
-            # For guest users, use session ID
-            if not session_id:
-                session_id = request.session.session_key
-                if not session_id:
-                    # Create session if it doesn't exist
-                    request.session.save()
-                    session_id = request.session.session_key
-            design.session_id = session_id
-        
-        # Save the design
-        design.save()
-        
-        return JsonResponse({
-            'success': True,
-            'design_id': design.id,
-            'message': f'Design "{name}" saved successfully!'
-        })
-        
-    except json.JSONDecodeError:
-        return JsonResponse({
-            'success': False,
-            'error': 'Invalid JSON data'
-        }, status=400)
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
